@@ -25,7 +25,7 @@ import smtplib, ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from fuprox.email import body
-import random,requests
+import random, requests
 
 link = "http://localhost:4000"
 # standard Python
@@ -142,7 +142,7 @@ def adduser():
     if not user_data:
         # hashing the password
         hashed_password = bcrypt.generate_password_hash(password)
-        user = Customer(email,dummy_phone,hashed_password)
+        user = Customer(email, dummy_phone, hashed_password)
         try:
             db.session.add(user)
             db.session.commit()
@@ -168,27 +168,27 @@ def adduser():
 def password_forgot():
     email = request.json["email"]
     if validate_email(email):
-        print(1)
         if email_exists(email):
-            print(2)
             code = random_four()
             user = Customer.query.filter_by(email=email).first()
             if save_code(user.id, code):
-                print(3)
                 """
                 to = request.json["to"]
                 subject = request.json["subject"]
                 body = request.json["body"]
+                
+                data = {
+                    "to" : "denniskiruku@gmail.com",
+                    "subject" : "king from",
+                    "body" : body(code)
+
+                }
+                requests.post("http://127.0.0.1:4000/email",json=data)
+                
+                
                 """
-                # data = {
-                #     "to" : "denniskiruku@gmail.com",
-                #     "subject" : "king from",
-                #     "body" : body(code)
-                #
-                # }
-                # requests.post("http://127.0.0.1:4000/email",json=data)
-                send_email(user.email, "password_recovery", body(code))
-                print(4)
+
+                send_email(user.email, "Password Recovery", body(code))
                 return {
                     "user": True,
                     "msg": "Email Sent Successfully"
@@ -211,12 +211,58 @@ def password_forgot():
         }
 
 
-@app.route("/email",methods=["POST"])
+@app.route("/password/forgot/code", methods=["POST"])
+def code_is_valid():
+    code = request.json["code"]
+    lookup = Recovery.query.filter_by(code=code).first()
+    if lookup:
+        return {
+            "code": True,
+            "msg": "Code Valid"
+        }
+    else:
+        return {
+            "user": None,
+            "msg": "Code not valid."
+        }
+
+
+@app.route("/password/forgot/change", methods=["POST"])
+def password_change():
+    email = request.json["email"]
+    code = request.json["code"]
+    password = request.json["password"]
+    if validate_email(email):
+        if email_exists(email):
+            user = Customer.query.filter_by(email=email).first()
+            if user.code == code:
+                hashed_password = bcrypt.generate_password_hash(password)
+                user.password = hashed_password
+                db.session.commit()
+                return user_schema.dump(user)
+            else:
+                return {
+                    "user": None,
+                    "msg": "Code Not found"
+                }
+        else:
+            return {
+                "user": None,
+                "msg": "User with that email Does Not Exist."
+            }
+    else:
+        return {
+            "user": None,
+            "msg": "Email Not Valid."
+        }
+
+
+@app.route("/email", methods=["POST"])
 def email_():
     to = request.json["to"]
     subject = request.json["subject"]
     body = request.json["body"]
-    return send_email(to,subject,body)
+    return send_email(to, subject, body)
 
 
 def save_code(user, code):
@@ -236,7 +282,7 @@ def random_four():
 
 def email_exists(email):
     lookup = Customer.query.filter_by(email=email).first()
-    print("user data>>",lookup)
+    print("user data>>", lookup)
     return user_schema.dump(lookup)
 
 

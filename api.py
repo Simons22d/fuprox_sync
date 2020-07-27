@@ -139,27 +139,33 @@ def adduser():
     # get user data
     lookup = Customer.query.filter_by(email=email).first()
     user_data = user_schema.dump(lookup)
-    if not user_data:
-        # hashing the password
-        hashed_password = bcrypt.generate_password_hash(password)
-        user = Customer(email, dummy_phone, hashed_password)
-        try:
-            db.session.add(user)
-            db.session.commit()
-            data = user_schema.dump(user)
-        except sqlalchemy.exc.DataError as e:
-            print(f"Error: {e}")
+    if validate_email(email):
+        if not user_data:
+            # hashing the password
+            hashed_password = bcrypt.generate_password_hash(password)
+            user = Customer(email, dummy_phone, hashed_password)
+            try:
+                db.session.add(user)
+                db.session.commit()
+                data = user_schema.dump(user)
+            except sqlalchemy.exc.DataError as e:
+                print(f"Error: {e}")
+                data = {
+                    "user": None,
+                    "msg": "Error Adding user."
+                }
+
+            if data:
+                sio.emit("sync_online_user", {"user_data": data})
+        else:
             data = {
                 "user": None,
-                "msg": "Error Adding user."
+                "msg": "User with that email Exists."
             }
-
-        if data:
-            sio.emit("sync_online_user", {"user_data": data})
     else:
         data = {
             "user": None,
-            "msg": "User with that email Exists."
+            "msg": "Email Not Valid."
         }
     return data
 

@@ -120,14 +120,20 @@ def timeline():
 def get_user():
     email = request.json["email"]
     password = request.json["password"]
-    if user_exists(email, password):
-        name = user_exists(email, password)
+    if validate_email(email):
+        if user_exists(email, password):
+            data = user_exists(email, password)
+        else:
+            data = {
+                "user": None,
+                "msg": "User with that email Exists."
+            }
     else:
         data = {
             "user": None,
-            "msg": "User with that email Exists."
+            "msg": "Email Not valid."
         }
-    return name
+    return data
 
 
 @app.route("/user/signup", methods=["POST"])

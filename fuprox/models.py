@@ -1,5 +1,73 @@
 from fuprox import db, ma
 from datetime import datetime
+import secrets
+from fuprox import app
+from flask_migrate import Migrate
+
+# working with flask migrate
+migrate = Migrate(app, db)
+
+
+class ServiceOffered(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    branch_id = db.Column(db.Integer, nullable=False)
+    name = db.Column(db.String(length=250), unique=True)
+    teller = db.Column(db.String(100), nullable=True)
+    date_added = db.Column(db.DateTime, default=datetime.now)
+    code = db.Column(db.String(length=10), nullable=False)
+    icon = db.Column(db.String(length=20))
+
+    def __init__(self, name, branch_id, teller, code, icon):
+        self.name = name
+        self.branch_id = branch_id
+        self.teller = teller
+        self.code = code
+        self.icon = icon
+
+
+class ServiceOfferedSchema(ma.Schema):
+    class Meta:
+        fields = ("id", "branch_id", "name", "teller", "date_added", "code", "icon")
+
+
+# creating a booking ID
+class Booking(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    service_name = db.Column(db.String(length=250), nullable=True)
+    start = db.Column(db.String(length=200))
+    branch_id = db.Column(db.Integer)
+    ticket = db.Column(db.String(length=6), nullable=False)
+    date_added = db.Column(db.DateTime, default=datetime.now, unique=True)
+    active = db.Column(db.Boolean, default=False, nullable=False)
+    nxt = db.Column(db.Integer, nullable=False, default=1001)
+    serviced = db.Column(db.Boolean, nullable=False, default=False)
+    teller = db.Column(db.String(200), nullable=False, default=000000)
+    kind = db.Column(db.Integer, nullable=False)
+    user = db.Column(db.Integer)
+    is_instant = db.Column(db.Boolean, default=False)
+    forwarded = db.Column(db.Boolean, default=False)
+
+    def __init__(self, service_name, start, branch_id, ticket, active, nxt, serviced, teller, kind, user,
+                 instant, fowarded):
+        self.service_name = service_name
+        self.start = start
+        self.branch_id = branch_id
+        self.ticket = ticket
+        self.active = active
+        self.nxt = nxt
+        self.serviced = serviced
+        self.teller = teller
+        self.kind = kind
+        self.user = user
+        self.is_instant = instant
+        self.forwarded = fowarded
+        self.nxt = 1001
+
+
+class BookingSchema(ma.Schema):
+    class Meta:
+        fields = ("id", "service_name", "start", "branch_id", "ticket", "active", "next", "serviced", "teller", \
+                  "kind", "user", "is_instant", "forwarded", "")
 
 
 # user DB model
@@ -13,10 +81,10 @@ class Customer(db.Model):
     def __repr__(self):
         return f"User (' {self.id} '{self.email}' )"
 
-    def __init__(self, email, password, phone_number):
+    def __init__(self, email, phone, password):
         self.email = email
+        self.phoneNumber = phone
         self.password = password
-        self.phoneNumber = phone_number
 
 
 class CustomerSchema(ma.Schema):
@@ -27,7 +95,7 @@ class CustomerSchema(ma.Schema):
 # creating a company class
 class Company(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(length=50))
+    name = db.Column(db.String(length=50), unique=True)
     service = db.Column(db.String(length=250))
 
     def __init__(self, name, service):
@@ -46,7 +114,7 @@ class CompanySchema(ma.Schema):
 # creating a branch class
 class Branch(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(length=100), unique=True)
+    name = db.Column(db.String(length=250), unique=True)
     company = db.Column(db.String(length=100), db.ForeignKey("company.name"), nullable=False)
     longitude = db.Column(db.String(length=50))
     latitude = db.Column(db.String(length=50))
@@ -73,27 +141,75 @@ class Branch(db.Model):
 class BranchSchema(ma.Schema):
     class Meta:
         fields = (
-        'id', 'name', 'company', 'address', 'longitude', 'latitude', 'opens', 'closes', 'service', 'description',
-        "key_", "valid_till")
+            'id', 'name', 'company', 'address', 'longitude', 'latitude', 'opens', 'closes', 'service', 'description',
+            "key_", "valid_till")
 
 
-class Service(db.Model):
+class Help(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(length=50))
-    service = db.Column(db.String(length=250))
-    is_medical = db.Column(db.Boolean, default=False)
+    topic = db.Column(db.String(length=100), nullable=False)
+    title = db.Column(db.String(length=250), nullable=False)
+    solution = db.Column(db.Text, nullable=False)
+    date_added = db.Column(db.DateTime, default=datetime.now, nullable=False)
 
-    def __init__(self, name, service, is_medical):
-        self.name = name
-        self.service = service
-        self.is_medical = is_medical
+    def __init__(self, topic, title, solution):
+        self.topic = topic
+        self.title = title
+        self.solution = solution
 
 
-class ServiceSchema(ma.Schema):
+class HelpSchema(ma.Schema):
     class Meta:
-        fields = ("id", "name", "service", "is_medical")
+        fields = ("id", "topic", "title", "solution", "date_added")
 
 
+class Teller(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    number = db.Column(db.Integer, nullable=False, unique=True)
+    date_added = db.Column(db.DateTime, default=datetime.now)
+    branch = db.Column(db.Integer)
+    service = db.Column(db.String(200))
+
+    def __init__(self, number, branch, service):
+        self.number = number
+        self.branch = branch
+        self.service = service
+
+
+class TellerSchema(ma.Schema):
+    class Meta:
+        fields = ("id", "number", "date_added", "branch", "service")
+
+
+'''
+    teller/booking Model
+'''
+
+
+class TellerBooking(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    teller_to = db.Column(db.Integer, nullable=False)
+    booking_id = db.Column(db.Integer, nullable=False)
+    teller_from = db.Column(db.Integer)
+    remarks = db.Column(db.Text, nullable=False)
+    active = db.Column(db.Boolean, nullable=False, default=True)
+    date_added = db.Column(db.DateTime, default=datetime.now)
+
+    def __init__(self, teller_to, booking_id, teller_from, remarks, active):
+        self.teller_to = teller_to
+        self.teller_from = teller_from
+        self.booking_id = booking_id
+        self.remarks = remarks
+        self.active = active
+
+
+class TellerBookingSchema(ma.Schema):
+    class Meta:
+        fields = ("id", "teller_to", "booking_id", "teller_from", "remarks", "active", "date_added")
+
+
+# booking model
+# creating a booking ID
 class OnlineBooking(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer)
@@ -124,117 +240,27 @@ class OnlineBookingSchema(ma.Schema):
         fields = ("id", "user_id", "service_name", "start", "branch_id", "ticket", "active", "next", "serviced")
 
 
-class Help(db.Model):
+class Icon(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    topic = db.Column(db.String(length=100), nullable=False)
-    title = db.Column(db.String(length=250), nullable=False)
-    solution = db.Column(db.Text, nullable=False)
-    date_added = db.Column(db.DateTime, default=datetime.now, nullable=False)
-
-    def __init__(self, topic, title, solution):
-        self.topic = topic
-        self.title = title
-        self.solution = solution
-
-
-class HelpSchema(ma.Schema):
-    class Meta:
-        fields = ("id", "topic", "title", "solution", "date_added")
-
-
-class ServiceOffered(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    branch_id = db.Column(db.Integer, nullable=False)
-    name = db.Column(db.String(length=50))
-    teller = db.Column(db.String(100), nullable=True)
+    name = db.Column(db.String(length=50), nullable=False, unique=True)
     date_added = db.Column(db.DateTime, default=datetime.now)
-    # date_expires = db.Column(db.DateTime, nullable=False)
-    code = db.Column(db.String(length=10), nullable=False)
-    icon = db.Column(db.String(length=20))
+    branch = db.Column(db.Integer, nullable=False)
+    icon = db.Column(db.Text)
 
-    def __init__(self, name, branch_id, teller, code, icon):
+    def __init__(self, name, branch, icon):
         self.name = name
-        self.branch_id = branch_id
-        self.teller = teller
-        self.code = code
+        self.branch = branch
         self.icon = icon
 
 
-class ServiceOfferedSchema(ma.Schema):
+class IconSchema(ma.Schema):
     class Meta:
-        fields = ("id", "branch_id", "name", "teller", "date_added", "code", "icon")
+        fields = ("id", "name", "date_added", "branch", "icon")
 
 
-# creating a booking ID
-class Booking(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    service_name = db.Column(db.String(length=100), nullable=True)
-    start = db.Column(db.String(length=200))
-    branch_id = db.Column(db.Integer)
-    ticket = db.Column(db.String(length=6), nullable=False)
-    date_added = db.Column(db.DateTime, default=datetime.now)
-    active = db.Column(db.Boolean, default=False, nullable=False)
-    nxt = db.Column(db.Integer, nullable=False)
-    serviced = db.Column(db.Boolean, nullable=False, default=False)
-    teller = db.Column(db.String(200), nullable=False, default=000000)
-    kind = db.Column(db.Integer, nullable=False)
-    user = db.Column(db.Integer)
-    is_instant = db.Column(db.Boolean, default=False)
-
-    def __init__(self, service_name, start, branch_id, ticket, active, nxt, serviced, teller, kind, user,
-                 instant):
-        self.service_name = service_name
-        self.start = start
-        self.branch_id = branch_id
-        self.ticket = ticket
-        self.active = active
-        self.nxt = 1001
-        self.serviced = serviced
-        self.teller = teller
-        self.kind = kind
-        self.user = user
-        self.is_instant = instant
-
-
-class BookingSchema(ma.Schema):
-    class Meta:
-        fields = ("id", "service_name", "start", "branch_id", "ticket", "active", "next", "serviced", "teller", \
-                  "kind", "user", "is_instant", "date_added")
-
-
-class Teller(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    number = db.Column(db.Integer, nullable=False, unique=True)
-    date_added = db.Column(db.DateTime, default=datetime.now)
-    branch = db.Column(db.Integer)
-    service = db.Column(db.String(200))
-
-    def __init__(self, number, branch, service):
-        self.number = number
-        self.branch = branch
-        self.service = service
-
-
-class TellerSchema(ma.Schema):
-    class Meta:
-        fields = ("id", "number", "date_added", "branch", "service")
-
-
-# paymnets schema
-
-class Payments(db.Model):
-    id = db.Column(db.Integer, primary_key=True, nullable=False)
-    body = db.Column(db.Text, nullable=False)
-    token = db.Column(db.String(length=255))
-
-    def __init__(self, body,token):
-        self.body = body
-        self.token = token
-
-
-class PaymentSchema(ma.Schema):
-    class Meta:
-        fields = ("id","body","token")
+"""
+>>>> MPESA PAYMENTS >>
+"""
 
 
 class Mpesa(db.Model):
@@ -259,5 +285,103 @@ class Mpesa(db.Model):
 
 class MpesaSchema(ma.Schema):
     class Meta:
-        fields = ("id", "amount", "receipt_number", "transaction_date", "phone_number", "checkout_request_id",
+        fields = ("id", "amount", "receipt_number", "transaction_data", "phone_number", "checkout_request_id",
                   "merchant_request_id", "result_code", "result_desc", "date_added", "local_transactional_key")
+
+
+class Payments(db.Model):
+    id = db.Column(db.Integer, primary_key=True, nullable=False)
+    body = db.Column(db.Text, nullable=False)
+    token = db.Column(db.String(length=255))
+
+    def __init__(self, body, token):
+        self.body = body
+        self.token = token
+
+
+class PaymentSchema(ma.Schema):
+    class Meta:
+        fields = ("id", "message", "token")
+
+
+class Service(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(length=50), unique=True)
+    service = db.Column(db.String(length=250))
+    is_medical = db.Column(db.Boolean, default=False)
+
+    def __init__(self, name, service, is_medical):
+        self.name = name
+        self.service = service
+        self.is_medical = is_medical
+
+
+class ServiceSchema(ma.Schema):
+    class Meta:
+        fields = ("id", "name", "service", "is_medical")
+
+
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(12), unique=True, nullable=False)
+    email = db.Column(db.String(48), unique=True, nullable=False)
+    image_file = db.Column(db.String(20), nullable=False, default="default.jpg")
+    password = db.Column(db.String(60), nullable=False)
+
+    def __repr__(self):
+        return f"User (' {self.id} ',' {self.username} ', '{self.email}', '{self.image_file}' )"
+
+    def __init__(self, username, email, password):
+        self.username = username
+        self.email = email
+        self.password = password
+
+
+class BookingTimes(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    booking_id = db.Column(db.Integer, nullable=False, unique=True)
+    date_added = db.Column(db.DateTime, default=datetime.now())
+    service = db.Column(db.ForeignKey("service_offered.name"), nullable=False)
+    start = db.Column(db.DateTime, default=datetime.now)
+    end = db.Column(db.DateTime, default=None)
+
+    def __init__(self, booking_id, service):
+        self.booking_id = booking_id
+        self.service = service
+
+
+class BookingTimesSchema(ma.Schema):
+    class Meta:
+        fields = ("id", "booking_id", "start", "end", "service", "date_added")
+
+
+class Video(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(length=250), unique=True)
+    active = db.Column(db.Integer, default=0)
+    type = db.Column(db.Integer, default=0)
+
+    def __init__(self, name, type):
+        self.name = name
+        self.type = type
+
+
+class VideoSchema(ma.Schema):
+    class Meta:
+        fields = ("id", "name", "active", "type")
+
+
+class Recovery(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user = db.Column(db.ForeignKey("customer.id"), nullable=False)
+    code = db.Column(db.String(length=50), nullable=False)
+    used = db.Column(db.Boolean, nullable=False, default=False)
+
+    def __init__(self, user, code):
+        self.user = user
+        self.code = code
+
+
+class RecoverySchema(ma.Schema):
+    class Meta:
+        fields = ("id", "user", "code")

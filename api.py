@@ -1,33 +1,31 @@
 # from logging import exception
-import asyncio
-import time
-import json
-import requests
-from asgiref.sync import sync_to_async
 from flask import request, jsonify
 from fuprox import db, app
-from fuprox.models import (Customer, Branch, CustomerSchema, BranchSchema, Service, ServiceSchema
+from fuprox.models import (Branch, BranchSchema, Service, ServiceSchema
 , Company, CompanySchema, Help, HelpSchema, ServiceOffered, ServiceOfferedSchema,
                            Booking, BookingSchema, TellerSchema, Teller, Payments, PaymentSchema,
-                           Mpesa, MpesaSchema)
+                           Mpesa, MpesaSchema, Recovery, RecoverySchema)
 from fuprox.payments import authenticate, stk_push
 import secrets
-from fuprox import bcrypt
 
 # from fuprox.utilities import user_exists
 from fuprox.models import Customer, CustomerSchema
 from fuprox import bcrypt
-from fuprox.models import Customer, CustomerSchema
-from fuprox import bcrypt
-from sqlalchemy import desc, asc
+from sqlalchemy import desc
 import logging
 import sqlalchemy
 import socketio
 import requests
 import time
-import eventlet.wsgi
 from datetime import datetime, timedelta
 import json
+import re
+import smtplib, ssl
+import smtplib, ssl
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from fuprox.email import body
+import random,requests
 
 link = "http://localhost:4000"
 # standard Python
@@ -82,6 +80,10 @@ payments_schema = PaymentSchema(many=True)
 mpesa_schema = MpesaSchema()
 mpesas_schema = MpesaSchema(many=True)
 
+# recovery_schema
+recovery_schema = RecoverySchema()
+recoverys_schema = RecoverySchema(many=True)
+
 
 # :::::::::::::::: Routes for graphs for the fuprox_no_queu_backend ::::
 @app.route("/graph/data/doughnut", methods=["POST"])
@@ -114,13 +116,10 @@ def timeline():
 
 
 # :::: end
-
-
 @app.route("/user/login", methods=["POST"])
 def get_user():
     email = request.json["email"]
     password = request.json["password"]
-
     if user_exists(email, password):
         name = user_exists(email, password)
     else:
@@ -128,7 +127,6 @@ def get_user():
             "user": None,
             "msg": "User with that email Exists."
         }
-
     return name
 
 
@@ -136,7 +134,7 @@ def get_user():
 def adduser():
     email = request.json["email"]
     password = request.json["password"]
-    dummy_phone = secrets.token_hex(4)
+    dummy_phone = random.getrandbits(12)
 
     # get user data
     lookup = Customer.query.filter_by(email=email).first()
@@ -144,13 +142,18 @@ def adduser():
     if not user_data:
         # hashing the password
         hashed_password = bcrypt.generate_password_hash(password)
-        user = Customer(email, hashed_password, dummy_phone)
+        user = Customer(email,dummy_phone,hashed_password)
         try:
             db.session.add(user)
             db.session.commit()
+            data = user_schema.dump(user)
         except sqlalchemy.exc.DataError as e:
             print(f"Error: {e}")
-        data = user_schema.dump(user)
+            data = {
+                "user": None,
+                "msg": "Error Adding user."
+            }
+
         if data:
             sio.emit("sync_online_user", {"user_data": data})
     else:
@@ -159,6 +162,109 @@ def adduser():
             "msg": "User with that email Exists."
         }
     return data
+
+
+@app.route("/password/forgot/email", methods=["POST"])
+def password_forgot():
+    email = request.json["email"]
+    if validate_email(email):
+        print(1)
+        if email_exists(email):
+            print(2)
+            code = random_four()
+            user = Customer.query.filter_by(email=email).first()
+            if save_code(user.id, code):
+                print(3)
+                """
+                to = request.json["to"]
+                subject = request.json["subject"]
+                body = request.json["body"]
+                """
+                # data = {
+                #     "to" : "denniskiruku@gmail.com",
+                #     "subject" : "king from",
+                #     "body" : body(code)
+                #
+                # }
+                # requests.post("http://127.0.0.1:4000/email",json=data)
+                send_email(user.email, "password_recovery", body(code))
+                print(4)
+                return {
+                    "user": True,
+                    "msg": "Email Sent Successfully"
+                }
+
+            else:
+                return {
+                    "user": None,
+                    "msg": "Error generating Code"
+                }
+        else:
+            return {
+                "user": None,
+                "msg": "User with that email Does Not Exist."
+            }
+    else:
+        return {
+            "user": None,
+            "msg": "Email Not Valid."
+        }
+
+
+@app.route("/email",methods=["POST"])
+def email_():
+    to = request.json["to"]
+    subject = request.json["subject"]
+    body = request.json["body"]
+    return send_email(to,subject,body)
+
+
+def save_code(user, code):
+    lookup = Recovery(user, code)
+    db.session.add(lookup)
+    db.session.commit()
+    return recovery_schema.dump(lookup)
+
+
+def random_four():
+    rand = random.getrandbits(30)
+    numbers = str(rand)
+    final = [numbers[i:i + 4] for i in range(0, len(numbers), 4)]
+    final = f"{final[0]}-{final[1]}"
+    return final
+
+
+def email_exists(email):
+    lookup = Customer.query.filter_by(email=email).first()
+    print("user data>>",lookup)
+    return user_schema.dump(lookup)
+
+
+def send_email(_to, subject, body):
+    _from = "admin@fuprox.com"
+    message = MIMEMultipart("alternative")
+    message["Subject"] = subject
+    message["From"] = _from
+    message["To"] = _to
+
+    # Turn these into plain/html MIMEText objects
+    part = MIMEText(body, "html")
+    # Add HTML/plain-text parts to MIMEMultipart message
+    message.attach(part)
+    # Create secure connection with server and send email
+    context = ssl.create_default_context()
+    with smtplib.SMTP_SSL("mail.fuprox.com", 465, context=context) as server:
+        server.login(_from, "Japanitoes")
+        if server.sendmail(_from, _to, message.as_string()):
+            return True
+        else:
+            return False
+
+
+def validate_email(email):
+    regex = re.compile(r'^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,'
+                       r'3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$')
+    return re.match(regex, email)
 
 
 @app.route("/user/logout")
@@ -343,7 +449,7 @@ def make_book_():
     # main object
     payment_data = payment_schema.dump(lookup)
 
-    print(">>>> payment data",payment_data)
+    print(">>>> payment data", payment_data)
     # "start"
 
     # end
@@ -367,6 +473,7 @@ def make_book_():
                 print("not instant")
                 # final = make_booking(service_name, start, branch_id, instant=False, user=user_id)
                 final = create_booking(service_name, start, branch_id, False, user_id)
+                print(final)
                 sio.emit("online", final)
         else:
             # error with payment
@@ -1282,8 +1389,7 @@ def add_teller_data(data):
 def verify_key(key):
     lookup = Branch.query.filter_by(key_=key).first()
     if lookup:
-        sio.emit("key_response",branch_schema.dump(lookup))
-
+        sio.emit("key_response", branch_schema.dump(lookup))
 
 
 try:

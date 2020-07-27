@@ -24,7 +24,7 @@ import smtplib, ssl
 import smtplib, ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from fuprox.email import body
+from fuprox.email import body,password_changed
 import random, requests
 
 link = "http://localhost:4000"
@@ -235,15 +235,24 @@ def password_change():
     if validate_email(email):
         if email_exists(email):
             user = Customer.query.filter_by(email=email).first()
-            if user.code == code:
+            lookup = Recovery.query.filter_by(code=code).first()
+            if lookup and lookup.code == code and lookup.used == 0:
                 hashed_password = bcrypt.generate_password_hash(password)
                 user.password = hashed_password
                 db.session.commit()
+
+                # mark code as used
+                lookup.used = True
+                db.session.commit()
+
+                # send password change email
+                send_email(user.email,"Password Successfully Changed", password_changed())
+
                 return user_schema.dump(user)
             else:
                 return {
                     "user": None,
-                    "msg": "Code Not found"
+                    "msg": "Code Not found/ Code used error."
                 }
         else:
             return {

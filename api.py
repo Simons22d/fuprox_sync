@@ -227,7 +227,7 @@ def password_forgot():
 def code_is_valid():
     code = request.json["code"]
     lookup = Recovery.query.filter_by(code=code).first()
-    if lookup:
+    if lookup and lookup.used == 0:
         return {
             "code": True,
             "msg": "Code Valid"

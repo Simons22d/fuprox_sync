@@ -1,5 +1,5 @@
 # from logging import exception
-from flask import request, jsonify,send_from_directory
+from flask import request, jsonify, send_from_directory
 from fuprox import db, app
 from fuprox.models import (Branch, BranchSchema, Service, ServiceSchema
 , Company, CompanySchema, Help, HelpSchema, ServiceOffered, ServiceOfferedSchema,
@@ -379,14 +379,18 @@ def get_all_branches():
 @app.route('/icon/<string:icon>', methods=["GET"])
 def get_icon(icon):
     home = str(Path.home())
-    icon_path = os.path.join(home,"fuprox_api", "icons")
+    icon_path = os.path.join(home, "fuprox_api", "icons")
     return send_from_directory("icons", filename=icon)
 
 
 @app.route("/branch/get/single", methods=["GET", "POST"])
 def get_user_branches():
     branch_id = request.json["branch_id"]
-    return jsonify(branch_get_single(branch_id))
+    branch_data = branch_get_single(branch_id)
+    # name
+    data = get_icon_by_company(branch_data["company"])
+    branch_data.update({"icon": f"http://0.0.0.0:4000/icon/{data['image']}"})
+    return jsonify(branch_data)
 
 
 def branch_get_single(branch_id):
@@ -777,6 +781,8 @@ def get_by_branch():
             else:
                 final = False
             item["is_medical"] = final
+            icon = get_icon_by_company(item["company"])
+            item["icon"] = f"http://0.0.0.0:4000/icon/{icon.image}"
             lst.append(item)
     return jsonify(lst)
 
@@ -794,6 +800,8 @@ def get_by_service():
         else:
             final = False
         item["is_medical"] = final
+        icon = get_icon_by_company(item["company"])
+        item["icon"] = f"http://0.0.0.0:4000/icon/{icon.image}"
         lst.append(item)
     return jsonify(data)
 

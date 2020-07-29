@@ -15,8 +15,10 @@ def user_exists(email,password):
     if data:
         if bcrypt.check_password_hash(data.password,password):
             token = secrets.token_hex(48)
-            result = {"user_data"  : user_schema.dump(data), "token" : token}
-
+            result = {
+                "user_data"  : user_schema.dump(data),
+                "token" : token
+            }
     else :
         result = {
             "user": None,

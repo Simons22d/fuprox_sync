@@ -4,6 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import (JWTManager)
 from flask_cors import CORS
+import os
 
 app = Flask(__name__)
 
@@ -14,7 +15,7 @@ CORS(app)
 jwt = JWTManager(app)
 
 # basedir  = os.path.abspath(os.path.dirname(__file__))
-app.config["SQLALCHEMY_DATABASE_URI"] = "mysql+mysqlconnector://root:@localhost:3306/fuprox"
+app.config["SQLALCHEMY_DATABASE_URI"] = f"mysql+mysqlconnector://root:{os.getenv('DBPASS')}@localhost:3306/fuprox"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 # app bindings

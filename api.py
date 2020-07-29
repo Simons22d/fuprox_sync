@@ -1,10 +1,10 @@
 # from logging import exception
-from flask import request, jsonify
+from flask import request, jsonify,send_from_directory
 from fuprox import db, app
 from fuprox.models import (Branch, BranchSchema, Service, ServiceSchema
 , Company, CompanySchema, Help, HelpSchema, ServiceOffered, ServiceOfferedSchema,
                            Booking, BookingSchema, TellerSchema, Teller, Payments, PaymentSchema,
-                           Mpesa, MpesaSchema, Recovery, RecoverySchema)
+                           Mpesa, MpesaSchema, Recovery, RecoverySchema, ImageCompanySchema, ImageCompany)
 from fuprox.payments import authenticate, stk_push
 import secrets
 
@@ -24,8 +24,10 @@ import smtplib, ssl
 import smtplib, ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from fuprox.email import body,password_changed
+from fuprox.email import body, password_changed
 import random, requests
+from pathlib import Path
+import os
 
 link = "http://localhost:4000"
 # standard Python
@@ -36,6 +38,9 @@ sio = socketio.Client()
 # adding some product schemas
 user_schema = CustomerSchema()
 users_schema = CustomerSchema(many=True)
+
+company_icon = ImageCompanySchema()
+companies_icon = ImageCompanySchema(many=True)
 
 service_ = ServiceSchema()
 service_s = ServiceSchema(many=True)
@@ -83,6 +88,12 @@ mpesas_schema = MpesaSchema(many=True)
 # recovery_schema
 recovery_schema = RecoverySchema()
 recoverys_schema = RecoverySchema(many=True)
+
+
+def get_icon_by_company(company_name):
+    company = Company.query.filter_by(name=company_name).first()
+    lookup = ImageCompany.query.filter_by(company=company.id).first()
+    return lookup
 
 
 # :::::::::::::::: Routes for graphs for the fuprox_no_queu_backend ::::
@@ -258,7 +269,7 @@ def password_change():
                 db.session.commit()
 
                 # send password change email
-                send_email(user.email,"Password Successfully Changed", password_changed())
+                send_email(user.email, "Password Successfully Changed", password_changed())
 
                 return user_schema.dump(user)
             else:
@@ -352,14 +363,24 @@ def get_all_branches():
     # sio.emit("teller",{"branch_id":res})
     for item in res:
         final = bool()
+        icon = get_icon_by_company(item["company"])
         if branch_is_medical(item["id"]):
             final = True
         else:
             final = False
 
         item["is_medical"] = final
+        item["icon"] = f"http://0.0.0.0:4000/icon/{icon.image}"
         lst.append(item)
+
     return jsonify({"branches": lst})
+
+
+@app.route('/icon/<string:icon>', methods=["GET"])
+def get_icon(icon):
+    home = str(Path.home())
+    icon_path = os.path.join(home,"fuprox_api", "icons")
+    return send_from_directory("icons", filename=icon)
 
 
 @app.route("/branch/get/single", methods=["GET", "POST"])

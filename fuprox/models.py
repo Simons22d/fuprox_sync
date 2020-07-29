@@ -385,3 +385,19 @@ class Recovery(db.Model):
 class RecoverySchema(ma.Schema):
     class Meta:
         fields = ("id", "user", "code")
+
+
+class ImageCompany(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    company = db.Column(db.ForeignKey("company.id"), nullable=False)
+    image = db.Column(db.String(length=250), nullable=False)
+
+    def __init__(self, company, image):
+        self.company = company
+        self.image = image
+
+
+class ImageCompanySchema(ma.Schema):
+    class Meta:
+        fields = ("id", "company", "image")
+

@@ -96,6 +96,12 @@ def get_icon_by_company(company_name):
     return lookup
 
 
+def get_icon_by_id(id):
+    company = Company.query.get(id)
+    lookup = ImageCompany.query.filter_by(company=company.id).first()
+    return lookup
+
+
 # :::::::::::::::: Routes for graphs for the fuprox_no_queu_backend ::::
 @app.route("/graph/data/doughnut", methods=["POST"])
 def graph_data():
@@ -363,13 +369,14 @@ def get_all_branches():
     # sio.emit("teller",{"branch_id":res})
     for item in res:
         final = bool()
-        icon = get_icon_by_company(item["company"])
+
         if branch_is_medical(item["id"]):
             final = True
         else:
             final = False
 
         item["is_medical"] = final
+        icon = get_icon_by_company(item["company"])
         item["icon"] = f"http://0.0.0.0:4000/icon/{icon.image}"
         lst.append(item)
 
@@ -723,7 +730,6 @@ def payment_res(parsed):
     db.session.commit()
     # add give data back to the user
     final = mpesa_schema.dump(lookup)
-    print("<><><><>>>>>>>>:::::", final)
     return final
 
 
@@ -760,7 +766,16 @@ def get_user_bookings_():
 def get_companies():
     companies = Company.query.all()
     company_data = companies_schema.dump(companies)
-    return jsonify(company_data)
+    lst = list()
+    for company in company_data:
+        icon = get_icon_by_company(company["name"])
+        if icon:
+            company.update({"icon": f"http://0.0.0.0:4000/icon/{icon.image}"})
+            lst.append(company)
+        else:
+            company.update({"icon": f"http://0.0.0.0:4000/icon/default.png"})
+            lst.append(company)
+    return jsonify(lst)
 
 
 # getting branch by company
@@ -782,7 +797,10 @@ def get_by_branch():
                 final = False
             item["is_medical"] = final
             icon = get_icon_by_company(item["company"])
-            item["icon"] = f"http://0.0.0.0:4000/icon/{icon.image}"
+            if icon:
+                item["icon"] = f"http://0.0.0.0:4000/icon/{icon.image}"
+            else:
+                item["icon"] = f"http://0.0.0.0:4000/icon/default.png"
             lst.append(item)
     return jsonify(lst)
 
@@ -809,16 +827,27 @@ def get_by_service():
 @app.route("/company/by/id", methods=["POST"])
 def company_service():
     service = request.json["id"]
-    branch = Company.query.get(service)
-    data = company_schema.dump(branch)
+    company = Company.query.get(service)
+    data = company_schema.dump(company)
+    icon = get_icon_by_id(company.id)
+    if icon:
+        data.update({"icon": f"http://0.0.0.0:4000/icon/{icon.image}"})
+    else:
+        data.update({"icon": f"http://0.0.0.0:4000/icon/default.png"})
+
     return jsonify(data)
 
 
 @app.route("/company/by/service", methods=["POST"])
 def company_by_service():
     service = request.json["service"]
-    branch = Company.query.filter_by(service=service).all()
-    data = companies_schema.dump(branch)
+    company = Company.query.filter_by(service=service).all()
+    data = companies_schema.dump(company)
+    icon = get_icon_by_id(company.id)
+    if icon:
+        data.update({"icon": f"http://0.0.0.0:4000/icon/{icon.image}"})
+    else:
+        data.update({"icon": f"http://0.0.0.0:4000/icon/default.png"})
     return jsonify(data)
 
 
@@ -866,6 +895,13 @@ def search_app():
         branch = Company.query.filter_by(name=item["company"]).first()
         data = branch_schema.dump(branch)
         item["company"] = data["id"]
+
+        icon = get_icon_by_company(item["company"])
+        if icon:
+            item.update({"icon": f"http://0.0.0.0:4000/icon/{icon.image}"})
+        else:
+            item.update({"icon": f"http://0.0.0.0:4000/icon/default.png"})
+
         item.update(med)
         lst.append(item)
     return jsonify(lst)
@@ -876,11 +912,6 @@ def service_offered():
     branch_id = request.json["branch_id"]
     lookup = ServiceOffered.query.filter_by(branch_id=branch_id).all()
     final = service_offers_schema.dump(lookup)
-    # final = list()
-    #
-    # for item in range(0, len(data)):
-    #     if item % 2 == 0:
-    #         final.append(data[item])
     return jsonify(final)
 
 

@@ -843,7 +843,7 @@ def company_service():
 @app.route("/company/by/service", methods=["POST"])
 def company_by_service():
     service = request.json["service"]
-    company = Company.query.get(service)
+    company = Company.query.filter_by(id=service).all()
     data = companies_schema.dump(company)
     lst = list()
     for item in data:

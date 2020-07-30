@@ -693,7 +693,6 @@ def payment_on():
 def payment_res(parsed):
     print(parsed)
     parsed = json.loads(parsed)
-    print(">>", parsed, type(parsed))
     parent = parsed["Body"]["stkCallback"]
     merchant_request_id = parent["MerchantRequestID"]
     checkout_request_id = parent["CheckoutRequestID"]
@@ -761,7 +760,6 @@ def get_user_bookings_():
         final = bookings_schema.dump(data)
     else:
         final = None
-
     return jsonify({"booking_data": final})
 
 
@@ -845,7 +843,7 @@ def company_service():
 @app.route("/company/by/service", methods=["POST"])
 def company_by_service():
     service = request.json["service"]
-    company = Company.query.filter_by(service=service).all()
+    company = Company.query.get(service)
     data = companies_schema.dump(company)
     lst = list()
     for item in data:

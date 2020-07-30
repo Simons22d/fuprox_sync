@@ -847,11 +847,16 @@ def company_by_service():
     service = request.json["service"]
     company = Company.query.filter_by(service=service).all()
     data = companies_schema.dump(company)
-    icon = get_icon_by_id(company.id)
-    if icon:
-        data.update({"icon": f"http://{link_icon}:4000/icon/{icon.image}"})
-    else:
-        data.update({"icon": f"http://{link_icon}:4000/icon/default.png"})
+    lst = list()
+    for item in data:
+        final = bool()
+        icon = get_icon_by_company(item["company"])
+        if icon :
+            item["icon"] = f"http://{link_icon}:4000/icon/{icon.image}"
+        else :
+            item["icon"] = f"http://{link_icon}:4000/icon/default.png"
+        lst.append(item)
+
     return jsonify(data)
 
 

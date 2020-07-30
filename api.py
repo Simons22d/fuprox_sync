@@ -846,15 +846,18 @@ def company_by_service():
     company = Company.query.filter_by(id=service).all()
     data = companies_schema.dump(company)
     lst = list()
+    # print("hit",data)
     for item in data:
+        print(">><><>")
         final = bool()
-        icon = get_icon_by_company(item["company"])
+        icon = get_icon_by_company(item["name"])
+        print(icon)
         if icon :
             item["icon"] = f"http://{link_icon}:4000/icon/{icon.image}"
         else :
             item["icon"] = f"http://{link_icon}:4000/icon/default.png"
         lst.append(item)
-
+    print("")
     return jsonify(data)
 
 
@@ -863,9 +866,35 @@ def search(term):
     # getting user specific data
     search = Help.query.filter(Help.solution.contains(term))
     data = helps_schema.dump(search)
-    # companies = Company.query.co()
-    # data = companies_schema.dump(companies)
     return jsonify(data)
+
+
+@app.route("/help/feed",methods=['POST'])
+def help_feed():
+    lookup = Help.query.limit(5).all()
+    data = helps_schema.dump(lookup)
+    return jsonify(data)
+
+
+@app.route("/help/feed/more",methods=["POST"])
+def help_more():
+    help = request.json["help_id"]
+    data = Help.query.get(help)
+    return help_schema.dump(data)
+
+
+@app.route("/help/feed/search",methods=["POST"])
+def help_search_app():
+    query = request.json["query"]
+    solution = Help.query.filter(Help.solution.like(f"%{query}%")).all()
+    header = Help.query.filter(Help.title.like(f"%{query}%")).all()
+
+    solutions = helps_schema.dump(solution)
+    headers = helps_schema.dump(header)
+    final = solutions + headers
+    return jsonify(final)
+
+
 
 
 # the search route

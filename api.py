@@ -378,7 +378,10 @@ def get_all_branches():
 
         item["is_medical"] = final
         icon = get_icon_by_company(item["company"])
-        item["icon"] = f"http://{link_icon}:4000/icon/{icon.image}"
+        if icon:
+            item["icon"] = f"http://{link_icon}:4000/icon/{icon.image}"
+        else:
+            item["icon"] = f"http://{link_icon}:4000/icon/default.png"
         lst.append(item)
 
     return jsonify({"branches": lst})

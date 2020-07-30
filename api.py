@@ -30,6 +30,7 @@ from pathlib import Path
 import os
 
 link = "http://localhost:4000"
+link_icon = "68.183.89.127"
 # standard Python
 sio = socketio.Client()
 
@@ -377,7 +378,7 @@ def get_all_branches():
 
         item["is_medical"] = final
         icon = get_icon_by_company(item["company"])
-        item["icon"] = f"http://0.0.0.0:4000/icon/{icon.image}"
+        item["icon"] = f"http://{link_icon}:4000/icon/{icon.image}"
         lst.append(item)
 
     return jsonify({"branches": lst})
@@ -396,7 +397,7 @@ def get_user_branches():
     branch_data = branch_get_single(branch_id)
     # name
     data = get_icon_by_company(branch_data["company"])
-    branch_data.update({"icon": f"http://0.0.0.0:4000/icon/{data['image']}"})
+    branch_data.update({"icon": f"http://{link_icon}:4000/icon/{data['image']}"})
     return jsonify(branch_data)
 
 
@@ -770,10 +771,10 @@ def get_companies():
     for company in company_data:
         icon = get_icon_by_company(company["name"])
         if icon:
-            company.update({"icon": f"http://0.0.0.0:4000/icon/{icon.image}"})
+            company.update({"icon": f"http://{link_icon}:4000/icon/{icon.image}"})
             lst.append(company)
         else:
-            company.update({"icon": f"http://0.0.0.0:4000/icon/default.png"})
+            company.update({"icon": f"http://{link_icon}:4000/icon/default.png"})
             lst.append(company)
     return jsonify(lst)
 
@@ -798,9 +799,9 @@ def get_by_branch():
             item["is_medical"] = final
             icon = get_icon_by_company(item["company"])
             if icon:
-                item["icon"] = f"http://0.0.0.0:4000/icon/{icon.image}"
+                item["icon"] = f"http://{link_icon}:4000/icon/{icon.image}"
             else:
-                item["icon"] = f"http://0.0.0.0:4000/icon/default.png"
+                item["icon"] = f"http://{link_icon}:4000/icon/default.png"
             lst.append(item)
     return jsonify(lst)
 
@@ -819,7 +820,7 @@ def get_by_service():
             final = False
         item["is_medical"] = final
         icon = get_icon_by_company(item["company"])
-        item["icon"] = f"http://0.0.0.0:4000/icon/{icon.image}"
+        item["icon"] = f"http://{link_icon}:4000/icon/{icon.image}"
         lst.append(item)
     return jsonify(data)
 
@@ -831,9 +832,9 @@ def company_service():
     data = company_schema.dump(company)
     icon = get_icon_by_id(company.id)
     if icon:
-        data.update({"icon": f"http://0.0.0.0:4000/icon/{icon.image}"})
+        data.update({"icon": f"http://{link_icon}:4000/icon/{icon.image}"})
     else:
-        data.update({"icon": f"http://0.0.0.0:4000/icon/default.png"})
+        data.update({"icon": f"http://{link_icon}:4000/icon/default.png"})
 
     return jsonify(data)
 
@@ -845,9 +846,9 @@ def company_by_service():
     data = companies_schema.dump(company)
     icon = get_icon_by_id(company.id)
     if icon:
-        data.update({"icon": f"http://0.0.0.0:4000/icon/{icon.image}"})
+        data.update({"icon": f"http://{link_icon}:4000/icon/{icon.image}"})
     else:
-        data.update({"icon": f"http://0.0.0.0:4000/icon/default.png"})
+        data.update({"icon": f"http://{link_icon}:4000/icon/default.png"})
     return jsonify(data)
 
 
@@ -898,9 +899,9 @@ def search_app():
 
         icon = get_icon_by_company(item["company"])
         if icon:
-            item.update({"icon": f"http://0.0.0.0:4000/icon/{icon.image}"})
+            item.update({"icon": f"http://{link_icon}:4000/icon/{icon.image}"})
         else:
-            item.update({"icon": f"http://0.0.0.0:4000/icon/default.png"})
+            item.update({"icon": f"http://{link_icon}:4000/icon/default.png"})
 
         item.update(med)
         lst.append(item)

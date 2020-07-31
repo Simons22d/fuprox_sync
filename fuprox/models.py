@@ -3,6 +3,7 @@ from datetime import datetime
 import secrets
 from fuprox import app
 from flask_migrate import Migrate
+import random
 
 # working with flask migrate
 migrate = Migrate(app, db)
@@ -401,3 +402,24 @@ class ImageCompanySchema(ma.Schema):
     class Meta:
         fields = ("id", "company", "image")
 
+
+class Utils:
+
+    @staticmethod
+    def random_numbers():
+        return random.getrandbits(24)
+
+
+class AccountStatus(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user = db.Column(db.ForeignKey("customer.id"), nullable=False)
+    active = db.Column(db.Boolean, nullable=False, default=False)
+    code = db.Column(nullable=False, default=Utils.random_numbers)
+
+    def __init__(self, user):
+        self.user = user
+
+
+class AccountStatusSchema(ma.Schema):
+    class Meta:
+        fields = ("id", "user", "active", "code")

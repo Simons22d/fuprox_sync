@@ -4,7 +4,8 @@ from fuprox import db, app
 from fuprox.models import (Branch, BranchSchema, Service, ServiceSchema
 , Company, CompanySchema, Help, HelpSchema, ServiceOffered, ServiceOfferedSchema,
                            Booking, BookingSchema, TellerSchema, Teller, Payments, PaymentSchema,
-                           Mpesa, MpesaSchema, Recovery, RecoverySchema, ImageCompanySchema, ImageCompany)
+                           Mpesa, MpesaSchema, Recovery, RecoverySchema, ImageCompanySchema, ImageCompany,
+                           AccountStatus, AccountStatusSchema)
 from fuprox.payments import authenticate, stk_push
 import secrets
 
@@ -24,7 +25,7 @@ import smtplib, ssl
 import smtplib, ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from fuprox.email import body, password_changed
+from fuprox.email import body, password_changed,code_body
 import random, requests
 from pathlib import Path
 import os
@@ -90,6 +91,10 @@ mpesas_schema = MpesaSchema(many=True)
 recovery_schema = RecoverySchema()
 recoverys_schema = RecoverySchema(many=True)
 
+# account schema
+account_schema = AccountStatusSchema()
+accounts_schema = AccountStatusSchema(many=True)
+
 
 def get_icon_by_company(company_name):
     company = Company.query.filter_by(name=company_name).first()
@@ -101,6 +106,26 @@ def get_icon_by_id(id):
     company = Company.query.get(id)
     lookup = ImageCompany.query.filter_by(company=company.id).first()
     return lookup
+
+
+def add_user_account(user):
+    try:
+        lookup = AccountStatus(user)
+        db.session.add(lookup)
+        db.session.commit()
+        # get user data
+        lookup = AccountStatus.query.filter_by(user=user).first()
+        return account_schema.dump(lookup)
+    except sqlalchemy.exc.IntegrityError :
+        lookup = AccountStatus.query.filter_by(user=user).first()
+        return account_schema.dump(lookup)
+
+
+
+
+def user_is_active(user):
+    lookup = AccountStatus.query.get(id)
+    return account_schema.dump(lookup)
 
 
 # :::::::::::::::: Routes for graphs for the fuprox_no_queu_backend ::::
@@ -140,7 +165,14 @@ def get_user():
     password = request.json["password"]
     if validate_email(email):
         if user_exists(email, password):
-            data = user_exists(email, password)
+            user = user_exists(email, password)
+            if user_is_active(user["id"]):
+                data = user
+            else:
+                data = {
+                    "user": None,
+                    "msg": "User is not active. Please email for code to actate account"
+                }
         else:
             data = {
                 "user": None,
@@ -172,13 +204,18 @@ def adduser():
                 db.session.add(user)
                 db.session.commit()
                 data = user_schema.dump(user)
+
+                # import time
+                # time.sleep(60)
+                code_data=add_user_account(data["id"])
+                send_email(email,"You acccount activation code",code_body(code_data["code"]))
+
             except sqlalchemy.exc.DataError as e:
                 print(f"Error: {e}")
                 data = {
                     "user": None,
                     "msg": "Error Adding user."
                 }
-
             if data:
                 sio.emit("sync_online_user", {"user_data": data})
         else:
@@ -852,9 +889,9 @@ def company_by_service():
         final = bool()
         icon = get_icon_by_company(item["name"])
         print(icon)
-        if icon :
+        if icon:
             item["icon"] = f"http://{link_icon}:4000/icon/{icon.image}"
-        else :
+        else:
             item["icon"] = f"http://{link_icon}:4000/icon/default.png"
         lst.append(item)
     print("")
@@ -869,21 +906,21 @@ def search(term):
     return jsonify(data)
 
 
-@app.route("/help/feed",methods=['POST'])
+@app.route("/help/feed", methods=['POST'])
 def help_feed():
     lookup = Help.query.limit(5).all()
     data = helps_schema.dump(lookup)
     return jsonify(data)
 
 
-@app.route("/help/feed/more",methods=["POST"])
+@app.route("/help/feed/more", methods=["POST"])
 def help_more():
     help = request.json["help_id"]
     data = Help.query.get(help)
     return help_schema.dump(data)
 
 
-@app.route("/help/feed/search",methods=["POST"])
+@app.route("/help/feed/search", methods=["POST"])
 def help_search_app():
     query = request.json["query"]
     solution = Help.query.filter(Help.solution.like(f"%{query}%")).all()
@@ -893,8 +930,6 @@ def help_search_app():
     headers = helps_schema.dump(header)
     final = solutions + headers
     return jsonify(final)
-
-
 
 
 # the search route

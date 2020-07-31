@@ -25,7 +25,7 @@ import smtplib, ssl
 import smtplib, ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from fuprox.email import body, password_changed,code_body
+from fuprox.email import body, password_changed, code_body
 import random, requests
 from pathlib import Path
 import os
@@ -116,16 +116,39 @@ def add_user_account(user):
         # get user data
         lookup = AccountStatus.query.filter_by(user=user).first()
         return account_schema.dump(lookup)
-    except sqlalchemy.exc.IntegrityError :
+    except sqlalchemy.exc.IntegrityError:
         lookup = AccountStatus.query.filter_by(user=user).first()
         return account_schema.dump(lookup)
 
 
+def activate_account(usr):
+    user = Customer.query.filter_by(email=usr).first()
+    if user:
+        lookup = AccountStatus.query.filter_by(user=user.id).first()
+        if lookup:
+            lookup.active = True
+            db.session.commit()
+            return account_schema.dump(lookup)
+        else:
+            return None
+    else:
+        return None
 
 
-def user_is_active(user):
-    lookup = AccountStatus.query.get(id)
-    return account_schema.dump(lookup)
+def user_is_active(usr):
+    user = Customer.query.filter_by(email=usr).first()
+    if user:
+        lookup = AccountStatus.query.filter_by(user=user.id).first()
+        print("user status",lookup)
+        if lookup:
+            if bool(lookup.active):
+                return False
+            else:
+                return True
+        else:
+            return None
+    else:
+        return None
 
 
 # :::::::::::::::: Routes for graphs for the fuprox_no_queu_backend ::::
@@ -158,6 +181,61 @@ def timeline():
     return date_data
 
 
+# activate account
+
+@app.route("/user/account/activate", methods=["POST"])
+def user_activate():
+    email = request.json["email"]
+    code = request.json["code"]
+    if validate_email(email):
+        user = Customer.query.filter_by(email=email).first()
+        user_data = user_schema.dump(user)
+
+        if user_data:
+            # getting code for the suer
+            code_ = AccountStatus.query.filter_by(user=user_data["id"]).first()
+            if code_:
+                if user_is_active(user_data["email"]):
+                    if code == code_.code:
+                        final = activate_account(user_data["email"])
+                        if final:
+                            data = {
+                                "user": True,
+                                "msg": "User account successfully activated active. Please Login"
+                            }
+                        else:
+                            data = {
+                                "user": None,
+                                "msg": "Error! Could Not Activate account."
+                            }
+                    else:
+                        data = {
+                            "user": None,
+                            "msg": "Error! Code Not valid."
+                        }
+                else:
+                    data = {
+                        "user": None,
+                        "msg": "User is active. Please Login"
+                    }
+            else:
+                data = {
+                    "user": None,
+                    "msg": "Error! Please, Recheck Code and reenter If error Persist contact Admin."
+                }
+        else:
+            data = {
+                "user": None,
+                "msg": "User Not Found."
+            }
+    else:
+        data = {
+            "user": None,
+            "msg": "Email Not valid."
+        }
+    return data
+
+
 # :::: end
 @app.route("/user/login", methods=["POST"])
 def get_user():
@@ -166,7 +244,7 @@ def get_user():
     if validate_email(email):
         if user_exists(email, password):
             user = user_exists(email, password)
-            if user_is_active(user["id"]):
+            if user_is_active(user["email"]):
                 data = user
             else:
                 data = {
@@ -207,8 +285,8 @@ def adduser():
 
                 # import time
                 # time.sleep(60)
-                code_data=add_user_account(data["id"])
-                send_email(email,"You acccount activation code",code_body(code_data["code"]))
+                code_data = add_user_account(data["id"])
+                send_email(email, "You acccount activation code", code_body(code_data["code"]))
 
             except sqlalchemy.exc.DataError as e:
                 print(f"Error: {e}")

@@ -52,7 +52,7 @@ def body(code):
                   Dear Sir/Madam, <br><br>
 
 
-                     Please use the code blow to change you  password as requested.
+                     Please use the code below to change your password as requested.
                      <pre>{code}</pre>
                      <br>
                      Kind Regards,<br>

@@ -67,8 +67,7 @@ class Booking(db.Model):
 
 class BookingSchema(ma.Schema):
     class Meta:
-        fields = ("id", "service_name", "start", "branch_id", "ticket", "active", "next", "serviced", "teller", \
-                  "kind", "user", "is_instant", "forwarded", "")
+        fields = ("id", "service_name", "start", "branch_id", "ticket", "active", "next", "serviced", "teller", "kind", "user", "is_instant", "forwarded", "")
 
 
 # user DB model
@@ -90,7 +89,7 @@ class Customer(db.Model):
 
 class CustomerSchema(ma.Schema):
     class Meta:
-        fields = ("id", "email", "phoneNumber", "password")
+        fields = ("id", "email", "phoneNumber", "image_file", "password")
 
 
 # creating a company class

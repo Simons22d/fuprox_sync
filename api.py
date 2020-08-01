@@ -137,14 +137,15 @@ def activate_account(usr):
 
 def user_is_active(usr):
     user = Customer.query.filter_by(email=usr).first()
+    print("user_found",user)
     if user:
         lookup = AccountStatus.query.filter_by(user=user.id).first()
-        print("user status",lookup)
+        print("account found",lookup)
         if lookup:
             if bool(lookup.active):
-                return False
-            else:
                 return True
+            else:
+                return False
         else:
             return None
     else:
@@ -242,19 +243,19 @@ def get_user():
     email = request.json["email"]
     password = request.json["password"]
     if validate_email(email):
-        if user_exists(email, password):
-            user = user_exists(email, password)
-            if user_is_active(user["email"]):
+        user = user_exists(email, password)
+        if user["user_data"]["email"]:
+            if user_is_active(user['user_data']["email"]):
                 data = user
             else:
                 data = {
                     "user": None,
-                    "msg": "User is not active. Please email for code to actate account"
+                    "msg": "User is not active. Please check email for code to activate account."
                 }
         else:
             data = {
                 "user": None,
-                "msg": "User with that email Exists."
+                "msg": "Error! User/Password Issue."
             }
     else:
         data = {
@@ -269,7 +270,6 @@ def adduser():
     email = request.json["email"]
     password = request.json["password"]
     dummy_phone = random.getrandbits(12)
-
     # get user data
     lookup = Customer.query.filter_by(email=email).first()
     user_data = user_schema.dump(lookup)
@@ -289,7 +289,6 @@ def adduser():
                 send_email(email, "You acccount activation code", code_body(code_data["code"]))
 
             except sqlalchemy.exc.DataError as e:
-                print(f"Error: {e}")
                 data = {
                     "user": None,
                     "msg": "Error Adding user."
@@ -436,7 +435,6 @@ def random_four():
 
 def email_exists(email):
     lookup = Customer.query.filter_by(email=email).first()
-    print("user data>>", lookup)
     return user_schema.dump(lookup)
 
 
@@ -598,8 +596,6 @@ def get_book():
             # return the ticket
             data = Booking.query.get(booking_id)
             final = booking_schema.dump(data)
-            print(final)
-
             if final:
                 name = ServiceOffered.query.filter_by(name=final["service_name"]).first()
                 data = service_offer_schema.dump(name)
@@ -666,32 +662,23 @@ def make_book_():
     lookup = Payments.query.filter_by(token=token).first()
     # main object
     payment_data = payment_schema.dump(lookup)
-
-    print(">>>> payment data", payment_data)
-    # "start"
-
     # end
     if payment_data:
-        print("stage one")
         main = json.loads(payment_data["body"])
         parent = main["Body"]["stkCallback"]
         result_code = parent["ResultCode"]
         result_desc = parent["ResultDesc"]
         if int(result_code) == 0:
-            print("stage 2")
             callback_meta = parent["CallbackMetadata"]["Item"]
             amount = callback_meta[0]["Value"]
             # succesful payment
             if int(amount) == 10:
-                print("instant")
                 # final = make_booking(service_name, start, branch_id, instant=True, user=user_id)
                 final = create_booking(service_name, start, branch_id, True, user_id)
                 sio.emit("online", final)
             else:
-                print("not instant")
                 # final = make_booking(service_name, start, branch_id, instant=False, user=user_id)
                 final = create_booking(service_name, start, branch_id, False, user_id)
-                print(final)
                 sio.emit("online", final)
         else:
             # error with payment
@@ -700,22 +687,6 @@ def make_book_():
         final = {"msg": False, "result": "Token Invalid"}
 
     return jsonify(final)
-
-    # res = verify_payment(token)
-    # is_instant_ = is_instant(token)
-    # print("token valid",res["msg"])
-    # if res["msg"]:
-    #     if is_instant_['msg']:
-    #         print("instant")
-    #         # final = make_booking(service_name, start, branch_id, True, user_id)
-    #         final = make_booking(service_name, start, branch_id, instant=True, user=user_id)
-    #     else:
-    #         print("not instant")
-    #         final = make_booking(service_name, start, branch_id, instant=False, user=user_id)
-    #     # "result_code":res["result_desc"]
-    # else:
-    #     final = {"result": "Token Provided Not Valid"}
-    # return jsonify({"msg": final})
 
 
 @app.route("/token/status", methods=["POST"])
@@ -750,19 +721,16 @@ def is_instant(token):
     data = get_payment(token)
     if data:
         amount = data["amount"]
-        print("amount", amount)
         # result_message = data["result_desc"]
         # "result":result_message
         if amount == '10' or amount == "10.0" or amount == 10 or amount == 10.0:
             # succesful payment
             final = {"msg": True}
         else:
-            print(":::: online")
             # error with payment
             final = {"msg": False}
     else:
         final = {"msg": False, "result": "No payment info about that payment"}
-        print(">>>>>>>>", final)
     return final
 
 
@@ -806,7 +774,6 @@ def payment_on():
 # # dealing with payment status
 # @app.route("/payment/status", methods=["POST"])
 def payment_res(parsed):
-    print(parsed)
     parsed = json.loads(parsed)
     parent = parsed["Body"]["stkCallback"]
     merchant_request_id = parent["MerchantRequestID"]
@@ -839,7 +806,6 @@ def payment_res(parsed):
         db.session.add(lookup)
         db.session.commit()
     else:
-        print("error!")
         # herw we are going to se the number
         lookup.phone_number = number
         # here we are  just going to commit
@@ -961,18 +927,14 @@ def company_by_service():
     company = Company.query.filter_by(id=service).all()
     data = companies_schema.dump(company)
     lst = list()
-    # print("hit",data)
     for item in data:
-        print(">><><>")
         final = bool()
         icon = get_icon_by_company(item["name"])
-        print(icon)
         if icon:
             item["icon"] = f"http://{link_icon}:4000/icon/{icon.image}"
         else:
             item["icon"] = f"http://{link_icon}:4000/icon/default.png"
         lst.append(item)
-    print("")
     return jsonify(data)
 
 
@@ -1327,17 +1289,21 @@ def create_service(name, teller, branch_id, code, icon_id):
 # check if the user exists
 def user_exists(email, password):
     data = Customer.query.filter_by(email=email).first()
+    print("user_data",data)
     # checking for the password
     if data:
         if bcrypt.check_password_hash(data.password, password):
             token = secrets.token_hex(48)
             result = {"user_data": user_schema.dump(data), "token": token}
+            print("<><<res>>>.",result)
     else:
         result = {
-            "user": None,
-            "msg": "Bad Username/Password combination"
+            "user_data" : {
+                "email": None,
+                "msg": "Bad Username/Password combination"
+            }
         }
-    return jsonify(result)
+    return result
 
 
 def is_user(user_id):

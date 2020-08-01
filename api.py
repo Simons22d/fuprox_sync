@@ -126,7 +126,8 @@ def activate_account(usr):
     if user:
         lookup = AccountStatus.query.filter_by(user=user.id).first()
         if lookup:
-            lookup.active = True
+            l = AccountStatus.query.filter_by(user=user.id).first()
+            l.active = True
             db.session.commit()
             return account_schema.dump(lookup)
         else:
@@ -140,16 +141,16 @@ def user_is_active(usr):
     print("user_found",user)
     if user:
         lookup = AccountStatus.query.filter_by(user=user.id).first()
-        print("account found",lookup)
+        print("account found",account_schema.dump(lookup))
         if lookup:
             if bool(lookup.active):
                 return True
             else:
                 return False
         else:
-            return None
+            return False
     else:
-        return None
+        return False
 
 
 # :::::::::::::::: Routes for graphs for the fuprox_no_queu_backend ::::
@@ -196,7 +197,8 @@ def user_activate():
             # getting code for the suer
             code_ = AccountStatus.query.filter_by(user=user_data["id"]).first()
             if code_:
-                if user_is_active(user_data["email"]):
+                print("<><><><><>",user_is_active(user_data["email"]))
+                if not user_is_active(user_data["email"]):
                     if code == code_.code:
                         final = activate_account(user_data["email"])
                         if final:

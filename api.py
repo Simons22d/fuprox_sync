@@ -239,6 +239,20 @@ def user_activate():
     return data
 
 
+@app.route("/user/dev/reset", methods=["POST"])
+def get_dev():
+    email = request.json["email"]
+    lookup = Customer.query.filter_by(email=email).first()
+    if lookup:
+        lookup.email = f"{secrets.token_hex(4)}@gmail.com"
+        db.session.commit()
+        return jsonify(user_schema.dump(lookup))
+    else:
+        return jsonify({
+            "error" : "Email not found"
+        })
+
+
 # :::: end
 @app.route("/user/login", methods=["POST"])
 def get_user():

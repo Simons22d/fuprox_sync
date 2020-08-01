@@ -1296,6 +1296,13 @@ def user_exists(email, password):
             token = secrets.token_hex(48)
             result = {"user_data": user_schema.dump(data), "token": token}
             print("<><<res>>>.",result)
+        else:
+            result = {
+                "user_data": {
+                    "email": None,
+                    "msg": "Bad Username/Password combination"
+                }
+            }
     else:
         result = {
             "user_data" : {

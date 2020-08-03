@@ -138,10 +138,8 @@ def activate_account(usr):
 
 def user_is_active(usr):
     user = Customer.query.filter_by(email=usr).first()
-    print("user_found",user)
     if user:
         lookup = AccountStatus.query.filter_by(user=user.id).first()
-        print("account found",account_schema.dump(lookup))
         if lookup:
             if bool(lookup.active):
                 return True
@@ -676,8 +674,10 @@ def make_book_():
     user_id = request.json["user_id"]
     # we are going to use the payments table to display;
     lookup = Payments.query.filter_by(token=token).first()
+    print(lookup)
     # main object
     payment_data = payment_schema.dump(lookup)
+    print(">>>.",payment_data)
     # end
     if payment_data:
         main = json.loads(payment_data["body"])
@@ -1311,7 +1311,6 @@ def user_exists(email, password):
         if bcrypt.check_password_hash(data.password, password):
             token = secrets.token_hex(48)
             result = {"user_data": user_schema.dump(data), "token": token}
-            print("<><<res>>>.",result)
         else:
             result = {
                 "user_data": {

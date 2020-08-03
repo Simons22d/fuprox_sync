@@ -1452,7 +1452,7 @@ def make_booking(service_name, start="", branch_id=1, ticket=1, active=False, up
         final = data_
     else:
         lookup = Booking(service_name, start, branch_id, ticket, active, upcoming, serviced, teller, kind, user,
-                         instant)
+                         instant,fowarded=False)
         db.session.add(lookup)
         db.session.commit()
         data_ = dict()

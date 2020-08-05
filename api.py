@@ -101,7 +101,7 @@ def get_icon_by_company(company_name):
     if company:
         lookup = ImageCompany.query.filter_by(company=company.id).first()
     else:
-        lookup = None
+        lookup = dict()
     return lookup
 
 

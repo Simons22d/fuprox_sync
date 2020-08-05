@@ -98,7 +98,10 @@ accounts_schema = AccountStatusSchema(many=True)
 
 def get_icon_by_company(company_name):
     company = Company.query.filter_by(name=company_name).first()
-    lookup = ImageCompany.query.filter_by(company=company.id).first()
+    if company:
+        lookup = ImageCompany.query.filter_by(company=company.id).first()
+    else:
+        lookup = None
     return lookup
 
 

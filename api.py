@@ -525,9 +525,16 @@ def get_icon(icon):
 def get_user_branches():
     branch_id = request.json["branch_id"]
     branch_data = branch_get_single(branch_id)
-    # name
-    data = get_icon_by_company(branch_data["company"])
-    branch_data.update({"icon": f"http://{link_icon}:4000/icon/{data['image']}"})
+    if branch_data:
+        # if branch_data["status"] :
+        #     branch_data.update({"icon": f"http://{link_icon}:4000/icon/default.png"})
+        # else :
+        print("here")
+        print(branch_data)
+        data = get_icon_by_company(branch_data["company"])
+        branch_data.update({"icon": f"http://{link_icon}:4000/icon/{data['image']}"})
+    else :
+        branch_data
     return jsonify(branch_data)
 
 
@@ -551,7 +558,7 @@ def branch_get_single(branch_id):
         res["is_medical"] = final
         res["company"] = company_
     else:
-        res = {"status": False, "msg": "Branch Does Not Exist"}
+        res = {}
     return res
 
 

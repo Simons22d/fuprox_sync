@@ -535,7 +535,11 @@ def get_user_branches():
         print("here")
         print(branch_data)
         data = get_icon_by_company(branch_data["company"])
-        branch_data.update({"icon": f"http://{link_icon}:4000/icon/{data['image']}"})
+        try:
+            branch_data.update({"icon": f"http://{link_icon}:4000/icon/{data['image']}"})
+        except KeyError :
+            branch_data.update({"icon" : f"http://{link_icon}:4000/icon/default.png" })
+
     else :
         branch_data
     return jsonify(branch_data)

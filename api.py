@@ -1020,7 +1020,7 @@ def search_app():
         branch_data_company = branches_schema.dump(branchdata_from_companyid)
         final_branch_data_company = branch_data_company
     # gettng data by company name
-    branch_lookup = Branch.query.filter(Branch.name.contains(term))
+    branch_lookup = Branch.query.filter(Branch.name.like(f"%{term}%")).all();
     branch_data_branch = branches_schema.dump(branch_lookup)
     final_branch_data_term = branch_data_branch
     # update cunstomer data to add medical
@@ -1045,10 +1045,10 @@ def search_app():
             item.update({"icon": f"http://{link_icon}:4000/icon/{icon.image}"})
         else:
             item.update({"icon": f"http://{link_icon}:4000/icon/default.png"})
-
         item.update(med)
         lst.append(item)
-    return jsonify(lst)
+    final_list = [dict(t) for t in {tuple(d.items()) for d in lst}]
+    return jsonify(final_list)
 
 
 @app.route("/services/get/all", methods=["POST"])

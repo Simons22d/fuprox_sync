@@ -31,7 +31,7 @@ from pathlib import Path
 import os
 
 link = "http://localhost:4000"
-link_icon = "68.183.89.127"
+link_icon = "159.65.144.235"
 # standard Python
 sio = socketio.Client()
 
@@ -658,7 +658,7 @@ def make_book():
     global mpesa_transaction_key
     mpesa_transaction_key = secrets.token_hex(10)
 
-    callback_url = "http://68.183.89.127:65123/mpesa/b2c/v1"
+    callback_url = f"http://{link_icon}:65123/mpesa/b2c/v1"
     token_data = authenticate()
     token = json.loads(token_data)["access_token"]
     business_shortcode = "174379"

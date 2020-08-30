@@ -1679,5 +1679,5 @@ except socketio.exceptions.ConnectionError:
     print("Error! Could not connect to the socket server.")
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", debug=True, port=4000)
-    # eventlet.wsgi.server(eventlet.listen(('', 4000)), app)
+    # app.run(host="0.0.0.0", debug=True, port=4000)
+    eventlet.wsgi.server(eventlet.listen(('', 4000)), app)

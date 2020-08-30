@@ -1,4 +1,5 @@
 # from logging import exception
+import eventlet.wsgi
 from flask import request, jsonify, send_from_directory
 from fuprox import db, app
 from fuprox.models import (Branch, BranchSchema, Service, ServiceSchema

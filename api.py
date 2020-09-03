@@ -964,8 +964,9 @@ def company_service():
 @app.route("/company/by/service", methods=["POST"])
 def company_by_service():
     service = request.json["service"]
-    company = Company.query.filter_by(id=service).all()
+    company = Company.query.filter_by(service=service).all()
     data = companies_schema.dump(company)
+    print(data)
     lst = list()
     for item in data:
         final = bool()
@@ -1686,5 +1687,5 @@ except socketio.exceptions.ConnectionError:
     print("Error! Could not connect to the socket server.")
 
 if __name__ == "__main__":
-    # app.run(host="0.0.0.0", debug=True, port=4000)
-    eventlet.wsgi.server(eventlet.listen(('', 4000)), app)
+    app.run(host="0.0.0.0", debug=True, port=4000)
+    # eventlet.wsgi.server(eventlet.listen(('', 4000)), app)

@@ -905,7 +905,9 @@ def get_by_branch():
     lst = list()
     if company_data:
         branch = Branch.query.filter_by(company=company_data["name"]).all()
+        # branch = Branch.query.all()
         data = branches_schema.dump(branch)
+        # print(">>>>>>>>>>", data)
         for item in data:
             final = bool()
             if branch_is_medical(item["id"]):
@@ -914,6 +916,8 @@ def get_by_branch():
                 final = False
             item["is_medical"] = final
             icon = get_icon_by_company(item["company"])
+            print(item["company"])
+            print("icons :::: >>",icon)
             if icon:
                 item["icon"] = f"http://{link_icon}:4000/icon/{icon.image}"
             else:
@@ -929,14 +933,16 @@ def get_by_service():
     data = branches_schema.dump(branch)
     lst = list()
     for item in data:
-        final = bool()
         if branch_is_medical(item["id"]):
             final = True
         else:
             final = False
         item["is_medical"] = final
         icon = get_icon_by_company(item["company"])
-        item["icon"] = f"http://{link_icon}:4000/icon/{icon.image}"
+        if icon:
+            item["icon"] = f"http://{link_icon}:4000/icon/{icon.image}"
+        else:
+            item["icon"] = f"http://{link_icon}:4000/icon/default.png"
         lst.append(item)
     return jsonify(data)
 

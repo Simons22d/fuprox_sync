@@ -1467,7 +1467,7 @@ def make_booking(service_name, start="", branch_id=1, ticket=1, active=False, up
     final = list()
     branch_data = branch_exist(branch_id)
     if branch_is_medical(branch_id):
-        lookup = Booking(service_name, start, branch_id, ticket, active, upcoming, serviced, teller, kind, user, False)
+        lookup = Booking(service_name, start, branch_id, ticket, active, upcoming, serviced, teller, kind, user, False,fowarded=False)
         db.session.add(lookup)
         db.session.commit()
         data_ = dict()

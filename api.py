@@ -689,37 +689,37 @@ def make_book_():
     user_id = request.json["user_id"]
     # we are going to use the payments table to display;
     lookup = Payments.query.filter_by(token=token).first()
-    # print(lookup)
+    print(lookup)
     # main object
-    # payment_data = payment_schema.dump(lookup)
-    # # print(">>>.",payment_data)
-    # # end
-    # if payment_data:
-    #     main = json.loads(payment_data["body"])
-    #     parent = main["Body"]["stkCallback"]
-    #     result_code = parent["ResultCode"]
-    #     result_desc = parent["ResultDesc"]
-    #     if int(result_code) == 0:
-    #         callback_meta = parent["CallbackMetadata"]["Item"]
-    #         amount = callback_meta[0]["Value"]
-    #         # succesful payment
-    #         if int(amount) == 10:
-    #             # final = make_booking(service_name, start, branch_id, instant=True, user=user_id)
-    #             final = create_booking(service_name, start, branch_id, True, user_id)
-    #             sio.emit("online", final)
-    #         else:
-    #             # final = make_booking(service_name, start, branch_id, instant=False, user=user_id)
-    #             final = create_booking(service_name, start, branch_id, False, user_id)
-    #             sio.emit("online", final)
-    #     else:
-    #         # error with payment
-    #         final = {"msg": "Error With Payment", "error": result_desc}
-    # else:
-    #     final = {"msg": False, "result": "Token Invalid"}
+    payment_data = payment_schema.dump(lookup)
+    # print(">>>.",payment_data)
+    # end
+    if payment_data:
+        main = json.loads(payment_data["body"])
+        parent = main["Body"]["stkCallback"]
+        result_code = parent["ResultCode"]
+        result_desc = parent["ResultDesc"]
+        if int(result_code) == 0:
+            callback_meta = parent["CallbackMetadata"]["Item"]
+            amount = callback_meta[0]["Value"]
+            # succesful payment
+            if int(amount) == 10:
+                # final = make_booking(service_name, start, branch_id, instant=True, user=user_id)
+                final = create_booking(service_name, start, branch_id, True, user_id)
+                sio.emit("online", final)
+            else:
+                # final = make_booking(service_name, start, branch_id, instant=False, user=user_id)
+                final = create_booking(service_name, start, branch_id, False, user_id)
+                sio.emit("online", final)
+        else:
+            # error with payment
+            final = {"msg": "Error With Payment", "error": result_desc}
+    else:
+        final = {"msg": False, "result": "Token Invalid"}
 
-    final = create_booking(service_name, start, branch_id, False, user_id)
-    sio.emit("online", final)
-
+    # final = create_booking(service_name, start, branch_id, False, user_id)
+    # sio.emit("online", final)
+    #
     return jsonify(final)
 
 

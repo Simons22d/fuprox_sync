@@ -199,7 +199,7 @@ def user_activate():
             # getting code for the suer
             code_ = AccountStatus.query.filter_by(user=user_data["id"]).first()
             if code_:
-                print("<><><><><>",user_is_active(user_data["email"]))
+                print("<><><><><>", user_is_active(user_data["email"]))
                 if not user_is_active(user_data["email"]):
                     if code == code_.code:
                         final = activate_account(user_data["email"])
@@ -251,7 +251,7 @@ def get_dev():
         return jsonify(user_schema.dump(lookup))
     else:
         return jsonify({
-            "error" : "Email not found"
+            "error": "Email not found"
         })
 
 
@@ -538,10 +538,10 @@ def get_user_branches():
         data = get_icon_by_company(branch_data["company"])
         try:
             branch_data.update({"icon": f"http://{link_icon}:4000/icon/{data['image']}"})
-        except KeyError :
-            branch_data.update({"icon" : f"http://{link_icon}:4000/icon/default.png" })
+        except KeyError:
+            branch_data.update({"icon": f"http://{link_icon}:4000/icon/default.png"})
 
-    else :
+    else:
         branch_data
     return jsonify(branch_data)
 
@@ -654,7 +654,6 @@ phone_number = int()
 def make_book():
     is_instant = True if request.json["is_instant"] else False
     phonenumber = request.json["phonenumber"]
-
     # setting the token
     global mpesa_transaction_key
     mpesa_transaction_key = secrets.token_hex(10)
@@ -694,31 +693,31 @@ def make_book_():
     payment_data = payment_schema.dump(lookup)
     # print(">>>.",payment_data)
     # end
-    if payment_data:
-        main = json.loads(payment_data["body"])
-        parent = main["Body"]["stkCallback"]
-        result_code = parent["ResultCode"]
-        result_desc = parent["ResultDesc"]
-        if int(result_code) == 0:
-            callback_meta = parent["CallbackMetadata"]["Item"]
-            amount = callback_meta[0]["Value"]
-            # succesful payment
-            if int(amount) == 10:
-                # final = make_booking(service_name, start, branch_id, instant=True, user=user_id)
-                final = create_booking(service_name, start, branch_id, True, user_id)
-                sio.emit("online", final)
-            else:
-                # final = make_booking(service_name, start, branch_id, instant=False, user=user_id)
-                final = create_booking(service_name, start, branch_id, False, user_id)
-                sio.emit("online", final)
-        else:
-            # error with payment
-            final = {"msg": "Error With Payment", "error": result_desc}
-    else:
-        final = {"msg": False, "result": "Token Invalid"}
+    # if payment_data:
+    #     main = json.loads(payment_data["body"])
+    #     parent = main["Body"]["stkCallback"]
+    #     result_code = parent["ResultCode"]
+    #     result_desc = parent["ResultDesc"]
+    #     if int(result_code) == 0:
+    #         callback_meta = parent["CallbackMetadata"]["Item"]
+    #         amount = callback_meta[0]["Value"]
+    #         # succesful payment
+    #         if int(amount) == 10:
+    #             # final = make_booking(service_name, start, branch_id, instant=True, user=user_id)
+    #             final = create_booking(service_name, start, branch_id, True, user_id)
+    #             sio.emit("online", final)
+    #         elif int(amount) == 5:
+    #             # final = make_booking(service_name, start, branch_id, instant=False, user=user_id)
+    #             final = create_booking(service_name, start, branch_id, False, user_id)
+    #             sio.emit("online", final)
+    #     else:
+    #         # error with payment
+    #         final = {"msg": "Error With Payment", "error": result_desc}
+    # else:
+    #     final = {"msg": False, "result": "Token Invalid"}
 
-    # final = create_booking(service_name, start, branch_id, False, user_id)
-    # sio.emit("online", final)
+    final = create_booking(service_name, start, branch_id, False, user_id)
+    sio.emit("online", final)
     #
     return jsonify(final)
 
@@ -917,7 +916,7 @@ def get_by_branch():
             item["is_medical"] = final
             icon = get_icon_by_company(item["company"])
             print(item["company"])
-            print("icons :::: >>",icon)
+            print("icons :::: >>", icon)
             if icon:
                 item["icon"] = f"http://{link_icon}:4000/icon/{icon.image}"
             else:
@@ -1330,7 +1329,7 @@ def create_service(name, teller, branch_id, code, icon_id):
 # check if the user exists
 def user_exists(email, password):
     data = Customer.query.filter_by(email=email).first()
-    print("user_data",data)
+    print("user_data", data)
     # checking for the password
     if data:
         if bcrypt.check_password_hash(data.password, password):
@@ -1345,7 +1344,7 @@ def user_exists(email, password):
             }
     else:
         result = {
-            "user_data" : {
+            "user_data": {
                 "email": None,
                 "msg": "Bad Username/Password combination"
             }
@@ -1467,7 +1466,8 @@ def make_booking(service_name, start="", branch_id=1, ticket=1, active=False, up
     final = list()
     branch_data = branch_exist(branch_id)
     if branch_is_medical(branch_id):
-        lookup = Booking(service_name, start, branch_id, ticket, active, upcoming, serviced, teller, kind, user, False,fowarded=False)
+        lookup = Booking(service_name, start, branch_id, ticket, active, upcoming, serviced, teller, kind, user, False,
+                         fowarded=False)
         db.session.add(lookup)
         db.session.commit()
         data_ = dict()
@@ -1477,7 +1477,7 @@ def make_booking(service_name, start="", branch_id=1, ticket=1, active=False, up
         final = data_
     else:
         lookup = Booking(service_name, start, branch_id, ticket, active, upcoming, serviced, teller, kind, user,
-                         instant,fowarded=False)
+                         instant, fowarded=False)
         db.session.add(lookup)
         db.session.commit()
         data_ = dict()
@@ -1626,6 +1626,13 @@ def sync_service_(data):
 @sio.on("update_ticket_data")
 def update_ticket_data(data):
     requests.post(f"{link}/update/ticket", json=data)
+
+
+# update online ticket data status
+@sio.on("offline_booking_status_to_online_data")
+def sync_ticket_status_active(data):
+    '''TODO: UPDATE TICKET STATUS TO ACTIVE '''
+    pass
 
 
 """

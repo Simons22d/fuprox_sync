@@ -716,7 +716,7 @@ def make_book_():
     # else:
     #     final = {"msg": False, "result": "Token Invalid"}
 
-    final = create_booking(service_name, start, branch_id, False, user_id)
+    final = create_booking(service_name, start, branch_id, True, user_id)
     sio.emit("online", final)
     #
     return jsonify(final)

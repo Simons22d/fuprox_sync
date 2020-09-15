@@ -159,10 +159,10 @@ def user_is_active(usr):
 @app.route("/graph/data/doughnut", methods=["POST"])
 def graph_data():
     # get all booking sorting by
-    serviced_lookup = Booking.query.with_entities(Booking.date_added).filter_by(nxt=1001).filter_by(serviced=True).all()
+    serviced_lookup = Booking.query.with_entities(Booking.date_added).filter_by(serviced=True).all()
     serviced_data = bookings_schema.dump(serviced_lookup)
 
-    unserviced_lookup = Booking.query.with_entities(Booking.date_added).filter_by(nxt=1001).filter_by(serviced=False).all()
+    unserviced_lookup = Booking.query.with_entities(Booking.date_added).filter_by(serviced=False).all()
     unserviced_data = bookings_schema.dump(unserviced_lookup)
     print(unserviced_data)
 
@@ -179,7 +179,8 @@ def timeline():
     offset = timedelta.days(-15)
     # the offset for new date
     limit_date = (now + offset)
-    date_lookup = Booking.query("date_added").filter_by(nxt=1001).filter(Booking.date_added.between(limit_date, now)).all()
+    date_lookup = Booking.query("date_added")\
+        .filter(Booking.date_added.between(limit_date, now)).all()
     #  sort data using pandas
     date_data = bookings_schema.dump(date_lookup)
     return date_data
@@ -1144,7 +1145,6 @@ def sycn_teller():
 def update_tickets_():
     # get branch by key
     key = request.json["key_"]
-    print("the key >>>>", key)
     service_name = request.json["service_name"]
     # branch_id = request.json["branch_id"]
     ticket = request.json["ticket"]
@@ -1152,7 +1152,7 @@ def update_tickets_():
     final = dict()
     if branch_data:
         # online booking
-        booking_lookup = Booking.query.filter_by(service_name=service_name).filter_by(nxt=1001).filter_by(branch_id=branch_data["id"]). \
+        booking_lookup = Booking.query.filter_by(service_name=service_name).filter_by(branch_id=branch_data["id"]). \
             filter_by(ticket=ticket).first()
         booking_data = booking_schema.dump(booking_lookup)
         if booking_data:
@@ -1365,7 +1365,7 @@ def get_teller(number):
 
 
 def ticket_queue(service_name, branch_id):
-    lookup = Booking.query.filter_by(service_name=service_name).filter_by(nxt=1001).filter_by(nxt=1001).filter_by(branch_id=branch_id).order_by(
+    lookup = Booking.query.filter_by(service_name=service_name).filter_by(nxt=1001).filter_by(branch_id=branch_id).order_by(
         desc(Booking.date_added)).first()
     booking_data = booking_schema.dump(lookup)
     return booking_data

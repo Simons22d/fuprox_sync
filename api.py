@@ -437,6 +437,43 @@ def email_():
     return send_email(to, subject, body)
 
 
+'''
+reset ticket counter
+'''
+
+@app.route("/reset/ticket/counter", methods=["POST"])
+def reset_ticket():
+    lookup = Booking.query.all()
+    for booking in lookup:
+        booking.nxt = 4004
+        db.session.commit()
+    #  here we are going to filter all tickets with the status [nxt == 4004]
+    reset_data = get_all_bookings_no_branch()
+    if reset_data:
+        # there was some data reset
+        final = loop_data_check_reset_tickets(reset_data)
+    else:
+        # No data to reset
+        final = list()
+    return jsonify(final)
+
+
+
+def get_all_bookings_no_branch():
+    data = Booking.query.filter_by(nxt=1001).all()
+    return bookings_schema.dump(data)
+
+
+
+def loop_data_check_reset_tickets(data):
+    ticket_reset = list()
+    for item in data:
+        if item.nxt == 4004:
+            ticket_reset.append(item)
+    return ticket_reset
+
+
+
 def save_code(user, code):
     lookup = Recovery(user, code)
     db.session.add(lookup)

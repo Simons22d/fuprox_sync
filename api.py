@@ -722,6 +722,7 @@ def make_book_():
     start = request.json["start"]
     branch_id = request.json["branch_id"]
     user_id = request.json["user_id"]
+    amount = requests.json["amount"]
     # we are going to use the payments table to display;
     lookup = Payments.query.filter_by(token=token).first()
     print(lookup)
@@ -752,9 +753,13 @@ def make_book_():
     # else:
     #     final = {"msg": False, "result": "Token Invalid"}
 
-    final = create_booking(service_name, start, branch_id, True, user_id)
-    sio.emit("online", final)
-    #
+    if int(amount) == 10:
+        final = create_booking(service_name, start, branch_id, True, user_id)
+        sio.emit("online", final)
+    elif int(amount) == 5:
+
+        final = create_booking(service_name, start, branch_id, False, user_id)
+        sio.emit("online", final)
     return jsonify(final)
 
 
@@ -1208,6 +1213,18 @@ def payment_user_status():
     db.session.add(lookup)
     db.session.commit()
     return payment_schema.jsonify(lookup)
+
+
+'''
+reset ticket count
+'''
+
+
+@app.route("/ticket/reset", methods=["POST"])
+def reset():
+    code = {"code": random.getrandbits()}
+    sio.emit("reset_tickets", code)
+    return jsonify(code)
 
 
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>

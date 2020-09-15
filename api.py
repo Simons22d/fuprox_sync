@@ -159,10 +159,10 @@ def user_is_active(usr):
 @app.route("/graph/data/doughnut", methods=["POST"])
 def graph_data():
     # get all booking sorting by
-    serviced_lookup = Booking.query.with_entities(Booking.date_added).filter_by(serviced=True).all()
+    serviced_lookup = Booking.query.with_entities(Booking.date_added).filter_by(nxt=1001).filter_by(serviced=True).all()
     serviced_data = bookings_schema.dump(serviced_lookup)
 
-    unserviced_lookup = Booking.query.with_entities(Booking.date_added).filter_by(serviced=False).all()
+    unserviced_lookup = Booking.query.with_entities(Booking.date_added).filter_by(nxt=1001).filter_by(serviced=False).all()
     unserviced_data = bookings_schema.dump(unserviced_lookup)
     print(unserviced_data)
 
@@ -179,7 +179,7 @@ def timeline():
     offset = timedelta.days(-15)
     # the offset for new date
     limit_date = (now + offset)
-    date_lookup = Booking.query("date_added").filter(Booking.date_added.between(limit_date, now)).all()
+    date_lookup = Booking.query("date_added").filter_by(nxt=1001).filter(Booking.date_added.between(limit_date, now)).all()
     #  sort data using pandas
     date_data = bookings_schema.dump(date_lookup)
     return date_data
@@ -1070,7 +1070,7 @@ def service_offered():
 def ahead_of_you():
     service_name = request.json["service_name"]
     branch_id = request.json["branch_id"]
-    lookup = Booking.query.filter_by(service_name=service_name).filter_by(branch_id=branch_id).filter_by(
+    lookup = Booking.query.filter_by(service_name=service_name).filter_by(nxt=1001).filter_by(branch_id=branch_id).filter_by(
         serviced=False).all()
     data = len(bookings_schema.dump(lookup)) if len(bookings_schema.dump(lookup)) else 0
     return jsonify({"infront": data})
@@ -1152,7 +1152,7 @@ def update_tickets_():
     final = dict()
     if branch_data:
         # online booking
-        booking_lookup = Booking.query.filter_by(service_name=service_name).filter_by(branch_id=branch_data["id"]). \
+        booking_lookup = Booking.query.filter_by(service_name=service_name).filter_by(nxt=1001).filter_by(branch_id=branch_data["id"]). \
             filter_by(ticket=ticket).first()
         booking_data = booking_schema.dump(booking_lookup)
         if booking_data:
@@ -1236,7 +1236,7 @@ def sync_service(key):
     final = dict()
     if branch_data:
         # get last 20 bookings
-        bookings_lookup = Booking.query.order_by(Booking.date_added).filter_by(branch_id=branch_data[
+        bookings_lookup = Booking.query.order_by(Booking.date_added).filter_by(nxt=1001).filter_by(branch_id=branch_data[
             "id"]).filter(Booking.user.between(0, 1000000000000000)).limit(
             50).all()
         booking_data = bookings_schema.dump(bookings_lookup)
@@ -1365,7 +1365,7 @@ def get_teller(number):
 
 
 def ticket_queue(service_name, branch_id):
-    lookup = Booking.query.filter_by(service_name=service_name).filter_by(branch_id=branch_id).order_by(
+    lookup = Booking.query.filter_by(service_name=service_name).filter_by(nxt=1001).filter_by(nxt=1001).filter_by(branch_id=branch_id).order_by(
         desc(Booking.date_added)).first()
     booking_data = booking_schema.dump(lookup)
     return booking_data
@@ -1499,7 +1499,7 @@ def get_last_ticket(service_name, branch_id):
     # here we are going to get the last ticket offline then make anew one base on that's
     # emit("last_ticket",{"branch_id":branch_id,"service_name": service_name})
 
-    lookup = Booking.query.filter_by(service_name=service_name).order_by(desc(Booking.date_added)).first()
+    lookup = Booking.query.filter_by(service_name=service_name).filter_by(nxt=1001).order_by(desc(Booking.date_added)).first()
     booking_data = booking_schema.dump(lookup)
     return booking_data
 
@@ -1572,7 +1572,7 @@ def ahead_of_you_id(id):
     lookup_data = booking_schema.dump(lookup)
     if lookup_data:
         booking_lookup_two = Booking.query.filter_by(service_name=lookup_data["service_name"]). \
-            filter_by(branch_id=lookup_data["branch_id"]).filter_by(serviced=False). \
+            filter_by(branch_id=lookup_data["branch_id"]).filter_by(nxt=1001).filter_by(serviced=False). \
             filter(Booking.date_added > lookup_data["start"]).all()
         final_booking_data = bookings_schema.dump(booking_lookup_two)
         final = {"msg": len(final_booking_data)}

@@ -1222,7 +1222,7 @@ reset ticket count
 
 @app.route("/ticket/reset", methods=["POST"])
 def reset():
-    code = {"code": random.getrandbits()}
+    code = {"code": random.getrandbits(8)}
     sio.emit("reset_tickets", code)
     return jsonify(code)
 

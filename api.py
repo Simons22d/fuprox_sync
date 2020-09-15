@@ -722,7 +722,7 @@ def make_book_():
     start = request.json["start"]
     branch_id = request.json["branch_id"]
     user_id = request.json["user_id"]
-    amount = requests.json["amount"]
+    amount = request.json["amount"]
     # we are going to use the payments table to display;
     lookup = Payments.query.filter_by(token=token).first()
     print(lookup)

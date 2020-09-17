@@ -945,9 +945,7 @@ def get_by_branch():
     lst = list()
     if company_data:
         branch = Branch.query.filter_by(company=company_data["name"]).all()
-        # branch = Branch.query.all()
         data = branches_schema.dump(branch)
-        # print(">>>>>>>>>>", data)
         for item in data:
             final = bool()
             if branch_is_medical(item["id"]):

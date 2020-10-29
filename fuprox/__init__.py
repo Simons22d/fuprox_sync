@@ -7,9 +7,12 @@ from flask_cors import CORS
 import os
 from dotenv import load_dotenv
 
-load_dotenv(f"{os.getcwd()}/.env")
+load_dotenv()
 
 db_pass = os.getenv("DBPASS")
+db_user = os.getenv("DBUSER")
+
+
 app = Flask(__name__)
 
 # init cors
@@ -19,7 +22,7 @@ CORS(app)
 jwt = JWTManager(app)
 
 # basedir  = os.path.abspath(os.path.dirname(__file__))
-app.config["SQLALCHEMY_DATABASE_URI"] = f"mysql+mysqlconnector://root:japanitoes@localhost:3306/fuprox"
+app.config["SQLALCHEMY_DATABASE_URI"] = f"mysql+mysqlconnector://{db_user}:{db_pass}@localhost:3306/fuprox"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 # app bindings

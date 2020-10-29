@@ -1,4 +1,5 @@
 # from logging import exception
+import eventlet.wsgi
 from flask import request, jsonify, send_from_directory
 from fuprox import db, app
 from fuprox.models import (Branch, BranchSchema, Service, ServiceSchema
@@ -31,7 +32,7 @@ from pathlib import Path
 import os
 
 link = "http://localhost:4000"
-link_icon = "68.183.89.127"
+link_icon = "159.65.144.235"
 # standard Python
 sio = socketio.Client()
 
@@ -178,7 +179,8 @@ def timeline():
     offset = timedelta.days(-15)
     # the offset for new date
     limit_date = (now + offset)
-    date_lookup = Booking.query("date_added").filter(Booking.date_added.between(limit_date, now)).all()
+    date_lookup = Booking.query("date_added") \
+        .filter(Booking.date_added.between(limit_date, now)).all()
     #  sort data using pandas
     date_data = bookings_schema.dump(date_lookup)
     return date_data
@@ -198,7 +200,7 @@ def user_activate():
             # getting code for the suer
             code_ = AccountStatus.query.filter_by(user=user_data["id"]).first()
             if code_:
-                print("<><><><><>",user_is_active(user_data["email"]))
+                print("<><><><><>", user_is_active(user_data["email"]))
                 if not user_is_active(user_data["email"]):
                     if code == code_.code:
                         final = activate_account(user_data["email"])
@@ -250,7 +252,7 @@ def get_dev():
         return jsonify(user_schema.dump(lookup))
     else:
         return jsonify({
-            "error" : "Email not found"
+            "error": "Email not found"
         })
 
 
@@ -435,6 +437,41 @@ def email_():
     return send_email(to, subject, body)
 
 
+'''
+reset ticket counter
+'''
+
+
+@app.route("/reset/ticket/counter", methods=["POST"])
+def reset_ticket():
+    lookup = Booking.query.all()
+    for booking in lookup:
+        booking.nxt = 4004
+        db.session.commit()
+    #  here we are going to filter all tickets with the status [nxt == 4004]
+    reset_data = get_all_bookings_no_branch()
+    if reset_data:
+        # there was some data reset
+        final = loop_data_check_reset_tickets(reset_data)
+    else:
+        # No data to reset
+        final = list()
+    return jsonify(final)
+
+
+def get_all_bookings_no_branch():
+    data = Booking.query.filter_by(nxt=1001).all()
+    return bookings_schema.dump(data)
+
+
+def loop_data_check_reset_tickets(data):
+    ticket_reset = list()
+    for item in data:
+        if item.nxt == 4004:
+            ticket_reset.append(item)
+    return ticket_reset
+
+
 def save_code(user, code):
     lookup = Recovery(user, code)
     db.session.add(lookup)
@@ -537,10 +574,10 @@ def get_user_branches():
         data = get_icon_by_company(branch_data["company"])
         try:
             branch_data.update({"icon": f"http://{link_icon}:4000/icon/{data['image']}"})
-        except KeyError :
-            branch_data.update({"icon" : f"http://{link_icon}:4000/icon/default.png" })
+        except KeyError:
+            branch_data.update({"icon": f"http://{link_icon}:4000/icon/default.png"})
 
-    else :
+    else:
         branch_data
     return jsonify(branch_data)
 
@@ -653,12 +690,11 @@ phone_number = int()
 def make_book():
     is_instant = True if request.json["is_instant"] else False
     phonenumber = request.json["phonenumber"]
-
     # setting the token
     global mpesa_transaction_key
     mpesa_transaction_key = secrets.token_hex(10)
 
-    callback_url = "http://68.183.89.127:65123/mpesa/b2c/v1"
+    callback_url = f"http://{link_icon}:65123/mpesa/b2c/v1"
     token_data = authenticate()
     token = json.loads(token_data)["access_token"]
     business_shortcode = "174379"
@@ -686,13 +722,14 @@ def make_book_():
     start = request.json["start"]
     branch_id = request.json["branch_id"]
     user_id = request.json["user_id"]
+    amount = request.json["amount"]
     # we are going to use the payments table to display;
     lookup = Payments.query.filter_by(token=token).first()
-    # print(lookup)
+    print(lookup)
     # main object
-    # payment_data = payment_schema.dump(lookup)
-    # # print(">>>.",payment_data)
-    # # end
+    payment_data = payment_schema.dump(lookup)
+    # print(">>>.",payment_data)
+    # end
     # if payment_data:
     #     main = json.loads(payment_data["body"])
     #     parent = main["Body"]["stkCallback"]
@@ -706,7 +743,7 @@ def make_book_():
     #             # final = make_booking(service_name, start, branch_id, instant=True, user=user_id)
     #             final = create_booking(service_name, start, branch_id, True, user_id)
     #             sio.emit("online", final)
-    #         else:
+    #         elif int(amount) == 5:
     #             # final = make_booking(service_name, start, branch_id, instant=False, user=user_id)
     #             final = create_booking(service_name, start, branch_id, False, user_id)
     #             sio.emit("online", final)
@@ -716,9 +753,13 @@ def make_book_():
     # else:
     #     final = {"msg": False, "result": "Token Invalid"}
 
-    final = create_booking(service_name, start, branch_id, False, user_id)
-    sio.emit("online", final)
+    if int(amount) == 10:
+        final = create_booking(service_name, start, branch_id, True, user_id)
+        sio.emit("online", final)
+    elif int(amount) == 5:
 
+        final = create_booking(service_name, start, branch_id, False, user_id)
+        sio.emit("online", final)
     return jsonify(final)
 
 
@@ -913,6 +954,8 @@ def get_by_branch():
                 final = False
             item["is_medical"] = final
             icon = get_icon_by_company(item["company"])
+            print(item["company"])
+            print("icons :::: >>", icon)
             if icon:
                 item["icon"] = f"http://{link_icon}:4000/icon/{icon.image}"
             else:
@@ -928,14 +971,16 @@ def get_by_service():
     data = branches_schema.dump(branch)
     lst = list()
     for item in data:
-        final = bool()
         if branch_is_medical(item["id"]):
             final = True
         else:
             final = False
         item["is_medical"] = final
         icon = get_icon_by_company(item["company"])
-        item["icon"] = f"http://{link_icon}:4000/icon/{icon.image}"
+        if icon:
+            item["icon"] = f"http://{link_icon}:4000/icon/{icon.image}"
+        else:
+            item["icon"] = f"http://{link_icon}:4000/icon/default.png"
         lst.append(item)
     return jsonify(data)
 
@@ -957,8 +1002,9 @@ def company_service():
 @app.route("/company/by/service", methods=["POST"])
 def company_by_service():
     service = request.json["service"]
-    company = Company.query.filter_by(id=service).all()
+    company = Company.query.filter_by(service=service).all()
     data = companies_schema.dump(company)
+    print(data)
     lst = list()
     for item in data:
         final = bool()
@@ -1063,7 +1109,8 @@ def service_offered():
 def ahead_of_you():
     service_name = request.json["service_name"]
     branch_id = request.json["branch_id"]
-    lookup = Booking.query.filter_by(service_name=service_name).filter_by(branch_id=branch_id).filter_by(
+    lookup = Booking.query.filter_by(service_name=service_name).filter_by(nxt=1001).filter_by(
+        branch_id=branch_id).filter_by(
         serviced=False).all()
     data = len(bookings_schema.dump(lookup)) if len(bookings_schema.dump(lookup)) else 0
     return jsonify({"infront": data})
@@ -1137,7 +1184,6 @@ def sycn_teller():
 def update_tickets_():
     # get branch by key
     key = request.json["key_"]
-    print("the key >>>>", key)
     service_name = request.json["service_name"]
     # branch_id = request.json["branch_id"]
     ticket = request.json["ticket"]
@@ -1165,6 +1211,18 @@ def payment_user_status():
     db.session.add(lookup)
     db.session.commit()
     return payment_schema.jsonify(lookup)
+
+
+'''
+reset ticket count
+'''
+
+
+@app.route("/ticket/reset", methods=["POST"])
+def reset():
+    code = {"code": random.getrandbits(100)}
+    sio.emit("reset_tickets", code)
+    return jsonify(code)
 
 
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -1229,8 +1287,9 @@ def sync_service(key):
     final = dict()
     if branch_data:
         # get last 20 bookings
-        bookings_lookup = Booking.query.order_by(Booking.date_added).filter_by(branch_id=branch_data[
-            "id"]).filter(Booking.user.between(0, 1000000000000000)).limit(
+        bookings_lookup = Booking.query.order_by(Booking.date_added).filter_by(nxt=1001).filter_by(
+            branch_id=branch_data[
+                "id"]).filter(Booking.user.between(0, 1000000000000000)).limit(
             50).all()
         booking_data = bookings_schema.dump(bookings_lookup)
         final_booking_data = list()
@@ -1322,7 +1381,7 @@ def create_service(name, teller, branch_id, code, icon_id):
 # check if the user exists
 def user_exists(email, password):
     data = Customer.query.filter_by(email=email).first()
-    print("user_data",data)
+    print("user_data", data)
     # checking for the password
     if data:
         if bcrypt.check_password_hash(data.password, password):
@@ -1337,7 +1396,7 @@ def user_exists(email, password):
             }
     else:
         result = {
-            "user_data" : {
+            "user_data": {
                 "email": None,
                 "msg": "Bad Username/Password combination"
             }
@@ -1358,7 +1417,8 @@ def get_teller(number):
 
 
 def ticket_queue(service_name, branch_id):
-    lookup = Booking.query.filter_by(service_name=service_name).filter_by(branch_id=branch_id).order_by(
+    lookup = Booking.query.filter_by(service_name=service_name).filter_by(nxt=1001).filter_by(
+        branch_id=branch_id).order_by(
         desc(Booking.date_added)).first()
     booking_data = booking_schema.dump(lookup)
     return booking_data
@@ -1459,7 +1519,8 @@ def make_booking(service_name, start="", branch_id=1, ticket=1, active=False, up
     final = list()
     branch_data = branch_exist(branch_id)
     if branch_is_medical(branch_id):
-        lookup = Booking(service_name, start, branch_id, ticket, active, upcoming, serviced, teller, kind, user, False)
+        lookup = Booking(service_name, start, branch_id, ticket, active, upcoming, serviced, teller, kind, user, False,
+                         fowarded=False)
         db.session.add(lookup)
         db.session.commit()
         data_ = dict()
@@ -1469,7 +1530,7 @@ def make_booking(service_name, start="", branch_id=1, ticket=1, active=False, up
         final = data_
     else:
         lookup = Booking(service_name, start, branch_id, ticket, active, upcoming, serviced, teller, kind, user,
-                         instant,fowarded=False)
+                         instant, fowarded=False)
         db.session.add(lookup)
         db.session.commit()
         data_ = dict()
@@ -1491,7 +1552,8 @@ def get_last_ticket(service_name, branch_id):
     # here we are going to get the last ticket offline then make anew one base on that's
     # emit("last_ticket",{"branch_id":branch_id,"service_name": service_name})
 
-    lookup = Booking.query.filter_by(service_name=service_name).order_by(desc(Booking.date_added)).first()
+    lookup = Booking.query.filter_by(service_name=service_name).filter_by(nxt=1001).order_by(
+        desc(Booking.date_added)).first()
     booking_data = booking_schema.dump(lookup)
     return booking_data
 
@@ -1564,7 +1626,7 @@ def ahead_of_you_id(id):
     lookup_data = booking_schema.dump(lookup)
     if lookup_data:
         booking_lookup_two = Booking.query.filter_by(service_name=lookup_data["service_name"]). \
-            filter_by(branch_id=lookup_data["branch_id"]).filter_by(serviced=False). \
+            filter_by(branch_id=lookup_data["branch_id"]).filter_by(nxt=1001).filter_by(serviced=False). \
             filter(Booking.date_added > lookup_data["start"]).all()
         final_booking_data = bookings_schema.dump(booking_lookup_two)
         final = {"msg": len(final_booking_data)}
@@ -1620,6 +1682,13 @@ def update_ticket_data(data):
     requests.post(f"{link}/update/ticket", json=data)
 
 
+# update online ticket data status
+@sio.on("offline_booking_status_to_online_data")
+def sync_ticket_status_active(data):
+    '''TODO: UPDATE TICKET STATUS TO ACTIVE '''
+    pass
+
+
 """
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 syncing all offline data
@@ -1671,6 +1740,11 @@ def verify_key(key):
     lookup = Branch.query.filter_by(key_=key).first()
     if lookup:
         sio.emit("key_response", branch_schema.dump(lookup))
+
+
+@sio.on("reset_ticket_request")
+def reset_tickets_listener(data):
+    return requests.post(f"{link}/reset/ticket/counter", json=data)
 
 
 try:

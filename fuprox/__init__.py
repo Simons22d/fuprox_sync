@@ -22,11 +22,8 @@ CORS(app)
 jwt = JWTManager(app)
 
 # basedir  = os.path.abspath(os.path.dirname(__file__))
-<<<<<<< HEAD
 app.config["SQLALCHEMY_DATABASE_URI"] = f"mysql+mysqlconnector://{db_user}:{db_pass}@localhost:3306/fuprox"
-=======
 app.config["SQLALCHEMY_DATABASE_URI"] = f"mysql+mysqlconnector://root:@localhost:3306/fuprox"
->>>>>>> a00932f862e84108b8c2b33c52570dbf9263569e
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 # app bindings

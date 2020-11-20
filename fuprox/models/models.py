@@ -5,9 +5,6 @@ from fuprox import app
 from flask_migrate import Migrate
 import random
 
-# working with flask migrate
-migrate = Migrate(app, db)
-
 
 class ServiceOffered(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -67,7 +64,9 @@ class Booking(db.Model):
 
 class BookingSchema(ma.Schema):
     class Meta:
-        fields = ("id", "service_name", "start", "branch_id", "ticket", "active", "next", "serviced", "teller", "kind", "user", "is_instant", "forwarded", "")
+        fields = (
+        "id", "service_name", "start", "branch_id", "ticket", "active", "next", "serviced", "teller", "kind", "user",
+        "is_instant", "forwarded", "")
 
 
 # user DB model
@@ -151,6 +150,7 @@ class Help(db.Model):
     title = db.Column(db.String(length=250), nullable=False)
     solution = db.Column(db.Text, nullable=False)
     date_added = db.Column(db.DateTime, default=datetime.now, nullable=False)
+    is_synced = db.Column(db.Boolean, default=False)
 
     def __init__(self, topic, title, solution):
         self.topic = topic
@@ -169,6 +169,7 @@ class Teller(db.Model):
     date_added = db.Column(db.DateTime, default=datetime.now)
     branch = db.Column(db.Integer)
     service = db.Column(db.String(200))
+    is_synced = db.Column(db.Boolean, default=False)
 
     def __init__(self, number, branch, service):
         self.number = number
@@ -413,7 +414,7 @@ class AccountStatus(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user = db.Column(db.ForeignKey("customer.id"), nullable=False)
     active = db.Column(db.Boolean, nullable=False, default=False)
-    code = db.Column(nullable=False, default=Utils.random_numbers)
+    code = db.Column(db.String(10),nullable=False, default=Utils.random_numbers)
 
     def __init__(self, user):
         self.user = user

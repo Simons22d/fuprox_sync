@@ -1,17 +1,16 @@
-# from logging import exception
+from logging import exception
 import eventlet.wsgi
 from flask import request, jsonify, send_from_directory
 from fuprox import db, app
-from fuprox.models import (Branch, BranchSchema, Service, ServiceSchema
-, Company, CompanySchema, Help, HelpSchema, ServiceOffered, ServiceOfferedSchema,
-                           Booking, BookingSchema, TellerSchema, Teller, Payments, PaymentSchema,
-                           Mpesa, MpesaSchema, Recovery, RecoverySchema, ImageCompanySchema, ImageCompany,
-                           AccountStatus, AccountStatusSchema)
-from fuprox.payments import authenticate, stk_push
+from fuprox.models.models import (Branch, BranchSchema, Service, ServiceSchema, Company, CompanySchema, Help,
+                                  HelpSchema, ServiceOffered, ServiceOfferedSchema, Booking, BookingSchema,
+                                  TellerSchema, Teller, Payments, PaymentSchema,Mpesa, MpesaSchema, Recovery,
+                                  RecoverySchema, ImageCompanySchema, ImageCompany,AccountStatus, AccountStatusSchema,
+                                  Customer, CustomerSchema)
+from fuprox.utils.payments import authenticate, stk_push
 import secrets
 
 # from fuprox.utilities import user_exists
-from fuprox.models import Customer, CustomerSchema
 from fuprox import bcrypt
 from sqlalchemy import desc
 import logging
@@ -26,7 +25,7 @@ import smtplib, ssl
 import smtplib, ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from fuprox.email import body, password_changed, code_body
+from fuprox.utils.email import body, password_changed, code_body
 import random, requests
 from pathlib import Path
 import os
@@ -339,7 +338,7 @@ def password_forgot():
                 to = request.json["to"]
                 subject = request.json["subject"]
                 body = request.json["body"]
-                
+
                 data = {
                     "to" : "denniskiruku@gmail.com",
                     "subject" : "king from",
@@ -347,8 +346,8 @@ def password_forgot():
 
                 }
                 requests.post("http://127.0.0.1:4000/email",json=data)
-                
-                
+
+
                 """
 
                 send_email(user.email, "Password Recovery", body(code))
@@ -1752,6 +1751,3 @@ try:
 except socketio.exceptions.ConnectionError:
     print("Error! Could not connect to the socket server.")
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", debug=True, port=4000)
-    # eventlet.wsgi.server(eventlet.listen(('', 4000)), app)

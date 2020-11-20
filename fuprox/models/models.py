@@ -14,6 +14,7 @@ class ServiceOffered(db.Model):
     date_added = db.Column(db.DateTime, default=datetime.now)
     code = db.Column(db.String(length=10), nullable=False)
     icon = db.Column(db.String(length=20))
+    is_synced = db.Column(db.Boolean, default=False)
 
     def __init__(self, name, branch_id, teller, code, icon):
         self.name = name
@@ -44,6 +45,8 @@ class Booking(db.Model):
     user = db.Column(db.Integer)
     is_instant = db.Column(db.Boolean, default=False)
     forwarded = db.Column(db.Boolean, default=False)
+    is_synced = db.Column(db.Boolean, default=False)
+
 
     def __init__(self, service_name, start, branch_id, ticket, active, nxt, serviced, teller, kind, user,
                  instant, fowarded):
@@ -195,6 +198,8 @@ class TellerBooking(db.Model):
     remarks = db.Column(db.Text, nullable=False)
     active = db.Column(db.Boolean, nullable=False, default=True)
     date_added = db.Column(db.DateTime, default=datetime.now)
+    is_synced = db.Column(db.Boolean, default=False)
+
 
     def __init__(self, teller_to, booking_id, teller_from, remarks, active):
         self.teller_to = teller_to
@@ -223,6 +228,8 @@ class OnlineBooking(db.Model):
     next = db.Column(db.Boolean, nullable=False, default=False)
     serviced = db.Column(db.Boolean, nullable=False, default=False)
     teller = db.Column(db.String(200), nullable=False, default=000000)
+    is_synced = db.Column(db.Boolean, default=False)
+
 
     def __init__(self, service_name, user_id, start, branch_id, ticket, active, next, serviced, teller):
         self.user_id = user_id
@@ -276,6 +283,8 @@ class Mpesa(db.Model):
     result_desc = db.Column(db.Text, nullable=True)
     date_added = db.Column(db.DateTime(), default=datetime.now)
     local_transactional_key = db.Column(db.String(255), nullable=False)
+    is_synced = db.Column(db.Boolean, default=False)
+
 
     def __init__(self, MerchantRequestID, CheckoutRequestID, ResultCode, ResultDesc):
         self.merchant_request_id = MerchantRequestID
@@ -294,6 +303,8 @@ class Payments(db.Model):
     id = db.Column(db.Integer, primary_key=True, nullable=False)
     body = db.Column(db.Text, nullable=False)
     token = db.Column(db.String(length=255))
+    is_synced = db.Column(db.Boolean, default=False)
+
 
     def __init__(self, body, token):
         self.body = body
@@ -310,6 +321,8 @@ class Service(db.Model):
     name = db.Column(db.String(length=50), unique=True)
     service = db.Column(db.String(length=250))
     is_medical = db.Column(db.Boolean, default=False)
+    is_synced = db.Column(db.Boolean, default=False)
+
 
     def __init__(self, name, service, is_medical):
         self.name = name
@@ -328,6 +341,9 @@ class User(db.Model):
     email = db.Column(db.String(48), unique=True, nullable=False)
     image_file = db.Column(db.String(20), nullable=False, default="default.jpg")
     password = db.Column(db.String(60), nullable=False)
+    is_synced = db.Column(db.Boolean, default=False)
+
+
 
     def __repr__(self):
         return f"User (' {self.id} ',' {self.username} ', '{self.email}', '{self.image_file}' )"
@@ -345,6 +361,8 @@ class BookingTimes(db.Model):
     service = db.Column(db.ForeignKey("service_offered.name"), nullable=False)
     start = db.Column(db.DateTime, default=datetime.now)
     end = db.Column(db.DateTime, default=None)
+    is_synced = db.Column(db.Boolean, default=False)
+
 
     def __init__(self, booking_id, service):
         self.booking_id = booking_id
@@ -361,6 +379,8 @@ class Video(db.Model):
     name = db.Column(db.String(length=250), unique=True)
     active = db.Column(db.Integer, default=0)
     type = db.Column(db.Integer, default=0)
+    is_synced = db.Column(db.Boolean, default=False)
+
 
     def __init__(self, name, type):
         self.name = name
@@ -377,6 +397,8 @@ class Recovery(db.Model):
     user = db.Column(db.ForeignKey("customer.id"), nullable=False)
     code = db.Column(db.String(length=50), nullable=False)
     used = db.Column(db.Boolean, nullable=False, default=False)
+    is_synced = db.Column(db.Boolean, default=False)
+
 
     def __init__(self, user, code):
         self.user = user
@@ -392,6 +414,8 @@ class ImageCompany(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     company = db.Column(db.ForeignKey("company.id"), nullable=False)
     image = db.Column(db.String(length=250), nullable=False)
+    is_synced = db.Column(db.Boolean, default=False)
+
 
     def __init__(self, company, image):
         self.company = company
@@ -415,6 +439,8 @@ class AccountStatus(db.Model):
     user = db.Column(db.ForeignKey("customer.id"), nullable=False)
     active = db.Column(db.Boolean, nullable=False, default=False)
     code = db.Column(db.String(10),nullable=False, default=Utils.random_numbers)
+    is_synced = db.Column(db.Boolean, default=False)
+
 
     def __init__(self, user):
         self.user = user

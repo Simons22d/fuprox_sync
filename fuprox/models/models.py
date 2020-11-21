@@ -44,7 +44,7 @@ class Booking(db.Model):
     is_instant = db.Column(db.Boolean, default=False)
     forwarded = db.Column(db.Boolean, default=False)
     is_synced = db.Column(db.Boolean, default=False)
-    unique_id = db.Column(db.Integer, default=ticket_unique)
+    unique_id = db.Column(db.Integer, default=ticket_unique, unique=True)
 
     def __init__(self, service_name, start, branch_id, ticket, active, nxt, serviced, teller, kind, user,
                  instant, fowarded):
@@ -65,10 +65,8 @@ class Booking(db.Model):
 
 class BookingSchema(ma.Schema):
     class Meta:
-        fields = (
-            "id", "service_name", "start", "branch_id", "ticket", "active", "next", "serviced", "teller", "kind",
-            "user",
-            "is_instant", "forwarded", "")
+        ields = ("id", "service_name", "start", "branch_id", "ticket", "active", "nxt", "serviced", "teller", \
+                 "kind", "user", "is_instant", "forwarded", "is_synced", "unique_id")
 
 
 # user DB model

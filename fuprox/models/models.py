@@ -1,9 +1,7 @@
 from fuprox import db, ma
 from datetime import datetime
-import secrets
-from fuprox import app
-from flask_migrate import Migrate
 import random
+from fuprox.utils.utilities import ticket_unique
 
 
 class ServiceOffered(db.Model):
@@ -46,6 +44,7 @@ class Booking(db.Model):
     is_instant = db.Column(db.Boolean, default=False)
     forwarded = db.Column(db.Boolean, default=False)
     is_synced = db.Column(db.Boolean, default=False)
+    unique_id = db.Column(db.Integer, default=ticket_unique)
 
     def __init__(self, service_name, start, branch_id, ticket, active, nxt, serviced, teller, kind, user,
                  instant, fowarded):

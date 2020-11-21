@@ -1,4 +1,4 @@
-from fuprox.models import Customer,CustomerSchema
+from fuprox.models.models import Customer, CustomerSchema
 from fuprox import bcrypt
 import secrets
 from flask import jsonify
@@ -8,20 +8,24 @@ users_exist = CustomerSchema(many=True)
 
 
 # check if the user exists
-def user_exists(email,password):
+def user_exists(email, password):
     data = Customer.query.filter_by(email=email).first()
     print(data)
     # checking for the password
     if data:
-        if bcrypt.check_password_hash(data.password,password):
+        if bcrypt.check_password_hash(data.password, password):
             token = secrets.token_hex(48)
             result = {
-                "user_data"  : user_schema.dump(data),
-                "token" : token
+                "user_data": user_schema.dump(data),
+                "token": token
             }
-    else :
+    else:
         result = {
             "user": None,
             "msg": "Bad Username/Password combination"
         }
     return jsonify(result)
+
+
+def ticket_unique() -> str:
+    return secrets.token_hex(16)

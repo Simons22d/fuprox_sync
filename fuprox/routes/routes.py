@@ -32,6 +32,11 @@ import os
 
 link = "http://localhost:4000"
 link_icon = "159.65.144.235"
+# online socket link
+# socket_link = "http://159.65.144.235:5000/"
+
+#  offline socket link
+socket_link = "http://localhost:5000/"
 # standard Python
 sio = socketio.Client()
 
@@ -48,7 +53,6 @@ service_ = ServiceSchema()
 service_s = ServiceSchema(many=True)
 
 # branch schema
-
 branch_schema = BranchSchema()
 branches_schema = BranchSchema(many=True)
 
@@ -1657,6 +1661,7 @@ def connect():
     print('connection established')
 
 
+
 @sio.event
 def teller(data):
     sio.emit('teller', {'response': 'my response'})
@@ -1749,7 +1754,6 @@ def reset_tickets_listener(data):
 
 
 try:
-    sio.connect("http://localhost:5000/")
+    sio.connect(socket_link)
 except socketio.exceptions.ConnectionError:
     print("Error! Could not connect to the socket server.")
-

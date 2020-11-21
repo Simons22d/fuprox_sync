@@ -1,8 +1,8 @@
-"""no sync
+"""inti 
 
-Revision ID: 4e6477f3b639
+Revision ID: 4860e7f180bb
 Revises: 
-Create Date: 2020-11-20 11:38:52.309946
+Create Date: 2020-11-21 10:32:14.775554
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '4e6477f3b639'
+revision = '4860e7f180bb'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -33,8 +33,11 @@ def upgrade():
     sa.Column('user', sa.Integer(), nullable=True),
     sa.Column('is_instant', sa.Boolean(), nullable=True),
     sa.Column('forwarded', sa.Boolean(), nullable=True),
+    sa.Column('is_synced', sa.Boolean(), nullable=True),
+    sa.Column('unique_id', sa.Integer(), nullable=True),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('date_added')
+    sa.UniqueConstraint('date_added'),
+    sa.UniqueConstraint('unique_id')
     )
     op.create_table('company',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -62,15 +65,6 @@ def upgrade():
     sa.Column('is_synced', sa.Boolean(), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_table('icon',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('name', sa.String(length=50), nullable=False),
-    sa.Column('date_added', sa.DateTime(), nullable=True),
-    sa.Column('branch', sa.Integer(), nullable=False),
-    sa.Column('icon', sa.Text(), nullable=True),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('name')
-    )
     op.create_table('mpesa',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('amount', sa.Float(), nullable=True),
@@ -83,26 +77,14 @@ def upgrade():
     sa.Column('result_desc', sa.Text(), nullable=True),
     sa.Column('date_added', sa.DateTime(), nullable=True),
     sa.Column('local_transactional_key', sa.String(length=255), nullable=False),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_table('online_booking',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('user_id', sa.Integer(), nullable=True),
-    sa.Column('service_name', sa.String(length=100), nullable=True),
-    sa.Column('start', sa.String(length=200), nullable=True),
-    sa.Column('branch_id', sa.Integer(), nullable=True),
-    sa.Column('ticket', sa.String(length=6), nullable=False),
-    sa.Column('date_added', sa.DateTime(), nullable=True),
-    sa.Column('active', sa.Boolean(), nullable=False),
-    sa.Column('next', sa.Boolean(), nullable=False),
-    sa.Column('serviced', sa.Boolean(), nullable=False),
-    sa.Column('teller', sa.String(length=200), nullable=False),
+    sa.Column('is_synced', sa.Boolean(), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('payments',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('body', sa.Text(), nullable=False),
     sa.Column('token', sa.String(length=255), nullable=True),
+    sa.Column('is_synced', sa.Boolean(), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('service',
@@ -110,6 +92,7 @@ def upgrade():
     sa.Column('name', sa.String(length=50), nullable=True),
     sa.Column('service', sa.String(length=250), nullable=True),
     sa.Column('is_medical', sa.Boolean(), nullable=True),
+    sa.Column('is_synced', sa.Boolean(), nullable=True),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('name')
     )
@@ -121,8 +104,10 @@ def upgrade():
     sa.Column('date_added', sa.DateTime(), nullable=True),
     sa.Column('code', sa.String(length=10), nullable=False),
     sa.Column('icon', sa.String(length=20), nullable=True),
+    sa.Column('is_synced', sa.Boolean(), nullable=True),
+    sa.Column('unique_id', sa.Integer(), nullable=True),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('name')
+    sa.UniqueConstraint('unique_id')
     )
     op.create_table('teller',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -134,22 +119,13 @@ def upgrade():
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('number')
     )
-    op.create_table('teller_booking',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('teller_to', sa.Integer(), nullable=False),
-    sa.Column('booking_id', sa.Integer(), nullable=False),
-    sa.Column('teller_from', sa.Integer(), nullable=True),
-    sa.Column('remarks', sa.Text(), nullable=False),
-    sa.Column('active', sa.Boolean(), nullable=False),
-    sa.Column('date_added', sa.DateTime(), nullable=True),
-    sa.PrimaryKeyConstraint('id')
-    )
     op.create_table('user',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('username', sa.String(length=12), nullable=False),
     sa.Column('email', sa.String(length=48), nullable=False),
     sa.Column('image_file', sa.String(length=20), nullable=False),
     sa.Column('password', sa.String(length=60), nullable=False),
+    sa.Column('is_synced', sa.Boolean(), nullable=True),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('email'),
     sa.UniqueConstraint('username')
@@ -159,6 +135,7 @@ def upgrade():
     sa.Column('name', sa.String(length=250), nullable=True),
     sa.Column('active', sa.Integer(), nullable=True),
     sa.Column('type', sa.Integer(), nullable=True),
+    sa.Column('is_synced', sa.Boolean(), nullable=True),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('name')
     )
@@ -167,6 +144,7 @@ def upgrade():
     sa.Column('user', sa.Integer(), nullable=False),
     sa.Column('active', sa.Boolean(), nullable=False),
     sa.Column('code', sa.String(length=10), nullable=False),
+    sa.Column('is_synced', sa.Boolean(), nullable=True),
     sa.ForeignKeyConstraint(['user'], ['customer.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -174,10 +152,11 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('booking_id', sa.Integer(), nullable=False),
     sa.Column('date_added', sa.DateTime(), nullable=True),
-    sa.Column('service', sa.String(length=250), nullable=False),
+    sa.Column('service', sa.Integer(), nullable=False),
     sa.Column('start', sa.DateTime(), nullable=True),
     sa.Column('end', sa.DateTime(), nullable=True),
-    sa.ForeignKeyConstraint(['service'], ['service_offered.name'], ),
+    sa.Column('is_synced', sa.Boolean(), nullable=True),
+    sa.ForeignKeyConstraint(['service'], ['service_offered.unique_id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('booking_id')
     )
@@ -202,6 +181,7 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('company', sa.Integer(), nullable=False),
     sa.Column('image', sa.String(length=250), nullable=False),
+    sa.Column('is_synced', sa.Boolean(), nullable=True),
     sa.ForeignKeyConstraint(['company'], ['company.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -210,6 +190,7 @@ def upgrade():
     sa.Column('user', sa.Integer(), nullable=False),
     sa.Column('code', sa.String(length=50), nullable=False),
     sa.Column('used', sa.Boolean(), nullable=False),
+    sa.Column('is_synced', sa.Boolean(), nullable=True),
     sa.ForeignKeyConstraint(['user'], ['customer.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -225,14 +206,11 @@ def downgrade():
     op.drop_table('account_status')
     op.drop_table('video')
     op.drop_table('user')
-    op.drop_table('teller_booking')
     op.drop_table('teller')
     op.drop_table('service_offered')
     op.drop_table('service')
     op.drop_table('payments')
-    op.drop_table('online_booking')
     op.drop_table('mpesa')
-    op.drop_table('icon')
     op.drop_table('help')
     op.drop_table('customer')
     op.drop_table('company')

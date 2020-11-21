@@ -33,6 +33,7 @@ ma = Marshmallow(app)
 m = Migrate(app,db)
 
 from fuprox.models.models import *
+from fuprox.routes.routes import *
 
 
 

@@ -1,5 +1,10 @@
 from fuprox import app
+import eventlet.wsgi
+
+# import multiprocessing
+# multiprocessing function
+# caller
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", debug=True, port=4000)
-    # eventlet.sgi.server(eventlet.listen(('', 4000)), app)
+    # eventlet.wsgi.server(eventlet.listen(("", 8000)), app)
+    app.run("0.0.0.0", 4000, debug=True)

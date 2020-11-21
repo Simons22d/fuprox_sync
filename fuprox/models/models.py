@@ -6,13 +6,14 @@ from fuprox.utils.utilities import ticket_unique
 
 class ServiceOffered(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    branch_id = db.Column(db.Integer, nullable=False)
-    name = db.Column(db.String(length=250), unique=True)
+    branch_key = db.Column(db.ForeignKey("branch.id"), nullable=False)
+    name = db.Column(db.String(length=250))
     teller = db.Column(db.String(100), nullable=True)
     date_added = db.Column(db.DateTime, default=datetime.now)
     code = db.Column(db.String(length=10), nullable=False)
     icon = db.Column(db.String(length=20))
     is_synced = db.Column(db.Boolean, default=False)
+    unique_id = db.Column(db.Integer, default=ticket_unique, unique=True)
 
     def __init__(self, name, branch_id, teller, code, icon):
         self.name = name
@@ -24,7 +25,27 @@ class ServiceOffered(db.Model):
 
 class ServiceOfferedSchema(ma.Schema):
     class Meta:
-        fields = ("id", "branch_id", "name", "teller", "date_added", "code", "icon")
+        fields = ("id", "branch_id", "name", "teller", "date_added", "code", "icon", "unique_id")
+
+
+class BookingTimes(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    booking_id = db.Column(db.Integer, nullable=False, unique=True)
+    date_added = db.Column(db.DateTime, default=datetime.now())
+    service = db.Column(db.ForeignKey("service_offered.unique_id"), nullable=False)
+    start = db.Column(db.DateTime, default=datetime.now)
+    end = db.Column(db.DateTime, default=None)
+    is_synced = db.Column(db.Boolean, default=False)
+
+    def __init__(self, booking_id, service):
+        self.booking_id = booking_id
+        self.service = service
+
+
+class BookingTimesSchema(ma.Schema):
+    class Meta:
+        fields = ("id", "booking_id", "start", "end", "service", "date_added")
+
 
 
 # creating a booking ID
@@ -181,86 +202,6 @@ class TellerSchema(ma.Schema):
     class Meta:
         fields = ("id", "number", "date_added", "branch", "service")
 
-
-'''
-    teller/booking Model
-'''
-
-
-class TellerBooking(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    teller_to = db.Column(db.Integer, nullable=False)
-    booking_id = db.Column(db.Integer, nullable=False)
-    teller_from = db.Column(db.Integer)
-    remarks = db.Column(db.Text, nullable=False)
-    active = db.Column(db.Boolean, nullable=False, default=True)
-    date_added = db.Column(db.DateTime, default=datetime.now)
-    is_synced = db.Column(db.Boolean, default=False)
-
-    def __init__(self, teller_to, booking_id, teller_from, remarks, active):
-        self.teller_to = teller_to
-        self.teller_from = teller_from
-        self.booking_id = booking_id
-        self.remarks = remarks
-        self.active = active
-
-
-class TellerBookingSchema(ma.Schema):
-    class Meta:
-        fields = ("id", "teller_to", "booking_id", "teller_from", "remarks", "active", "date_added")
-
-
-# booking model
-# creating a booking ID
-class OnlineBooking(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer)
-    service_name = db.Column(db.String(length=100), nullable=True)
-    start = db.Column(db.String(length=200))
-    branch_id = db.Column(db.Integer)
-    ticket = db.Column(db.String(length=6), nullable=False)
-    date_added = db.Column(db.DateTime, default=datetime.now)
-    active = db.Column(db.Boolean, default=False, nullable=False)
-    next = db.Column(db.Boolean, nullable=False, default=False)
-    serviced = db.Column(db.Boolean, nullable=False, default=False)
-    teller = db.Column(db.String(200), nullable=False, default=000000)
-    is_synced = db.Column(db.Boolean, default=False)
-
-    def __init__(self, service_name, user_id, start, branch_id, ticket, active, next, serviced, teller):
-        self.user_id = user_id
-        self.service_name = service_name
-        self.start = start
-        self.branch_id = branch_id
-        self.ticket = ticket
-        self.active = active
-        self.next = next
-        self.serviced = serviced
-        self.teller = teller
-
-
-class OnlineBookingSchema(ma.Schema):
-    class Meta:
-        fields = ("id", "user_id", "service_name", "start", "branch_id", "ticket", "active", "next", "serviced")
-
-
-class Icon(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(length=50), nullable=False, unique=True)
-    date_added = db.Column(db.DateTime, default=datetime.now)
-    branch = db.Column(db.Integer, nullable=False)
-    icon = db.Column(db.Text)
-
-    def __init__(self, name, branch, icon):
-        self.name = name
-        self.branch = branch
-        self.icon = icon
-
-
-class IconSchema(ma.Schema):
-    class Meta:
-        fields = ("id", "name", "date_added", "branch", "icon")
-
-
 """
 >>>> MPESA PAYMENTS >>
 """
@@ -342,25 +283,6 @@ class User(db.Model):
         self.username = username
         self.email = email
         self.password = password
-
-
-class BookingTimes(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    booking_id = db.Column(db.Integer, nullable=False, unique=True)
-    date_added = db.Column(db.DateTime, default=datetime.now())
-    service = db.Column(db.ForeignKey("service_offered.name"), nullable=False)
-    start = db.Column(db.DateTime, default=datetime.now)
-    end = db.Column(db.DateTime, default=None)
-    is_synced = db.Column(db.Boolean, default=False)
-
-    def __init__(self, booking_id, service):
-        self.booking_id = booking_id
-        self.service = service
-
-
-class BookingTimesSchema(ma.Schema):
-    class Meta:
-        fields = ("id", "booking_id", "start", "end", "service", "date_added")
 
 
 class Video(db.Model):

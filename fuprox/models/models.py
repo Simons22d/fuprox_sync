@@ -186,11 +186,13 @@ class HelpSchema(ma.Schema):
 
 class Teller(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    number = db.Column(db.Integer, nullable=False, unique=True)
+    number = db.Column(db.Integer, nullable=False)
     date_added = db.Column(db.DateTime, default=datetime.now)
     branch = db.Column(db.Integer)
     service = db.Column(db.String(200))
+    unique_id = db.Column(db.Integer, default=ticket_unique, unique=True)
     is_synced = db.Column(db.Boolean, default=False)
+
 
     def __init__(self, number, branch, service):
         self.number = number
@@ -200,8 +202,7 @@ class Teller(db.Model):
 
 class TellerSchema(ma.Schema):
     class Meta:
-        fields = ("id", "number", "date_added", "branch", "service")
-
+        fields = ("id", "number", "date_added", "branch", "service","is_synced","unique_id")
 """
 >>>> MPESA PAYMENTS >>
 """

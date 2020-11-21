@@ -1,5 +1,5 @@
-import secrets
+import random
 
 
-def ticket_unique() -> str:
-    return secrets.token_hex(16)
+def ticket_unique() -> int:
+    return random.getrandbits(160)

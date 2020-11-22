@@ -6,14 +6,14 @@ from fuprox.utils.utilities import ticket_unique
 
 class ServiceOffered(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    branch_key = db.Column(db.ForeignKey("branch.id"), nullable=False)
-    name = db.Column(db.String(length=250))
+    branch_id = db.Column(db.ForeignKey("branch.id"), nullable=False)
+    name = db.Column(db.String(length=250), unique=True)
     teller = db.Column(db.String(100), nullable=True)
     date_added = db.Column(db.DateTime, default=datetime.now)
     code = db.Column(db.String(length=10), nullable=False)
     icon = db.Column(db.String(length=20))
     is_synced = db.Column(db.Boolean, default=False)
-    unique_id = db.Column(db.Integer, default=ticket_unique, unique=True)
+    unique_id = db.Column(db.String(255), default=ticket_unique, unique=True)
 
     def __init__(self, name, branch_id, teller, code, icon):
         self.name = name
@@ -47,7 +47,6 @@ class BookingTimesSchema(ma.Schema):
         fields = ("id", "booking_id", "start", "end", "service", "date_added")
 
 
-
 # creating a booking ID
 class Booking(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -65,7 +64,7 @@ class Booking(db.Model):
     is_instant = db.Column(db.Boolean, default=False)
     forwarded = db.Column(db.Boolean, default=False)
     is_synced = db.Column(db.Boolean, default=False)
-    unique_id = db.Column(db.Integer, default=ticket_unique, unique=True)
+    unique_id = db.Column(db.String(255), default=ticket_unique, unique=True)
 
     def __init__(self, service_name, start, branch_id, ticket, active, nxt, serviced, teller, kind, user,
                  instant, fowarded):
@@ -190,9 +189,8 @@ class Teller(db.Model):
     date_added = db.Column(db.DateTime, default=datetime.now)
     branch = db.Column(db.Integer)
     service = db.Column(db.String(200))
-    unique_id = db.Column(db.Integer, default=ticket_unique, unique=True)
+    unique_id = db.Column(db.String(255), default=ticket_unique, unique=True)
     is_synced = db.Column(db.Boolean, default=False)
-
 
     def __init__(self, number, branch, service):
         self.number = number
@@ -202,7 +200,9 @@ class Teller(db.Model):
 
 class TellerSchema(ma.Schema):
     class Meta:
-        fields = ("id", "number", "date_added", "branch", "service","is_synced","unique_id")
+        fields = ("id", "number", "date_added", "branch", "service", "is_synced", "unique_id")
+
+
 """
 >>>> MPESA PAYMENTS >>
 """

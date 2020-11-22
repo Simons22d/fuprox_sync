@@ -1134,12 +1134,15 @@ def sync_bookings():
     user = request.json["user"]
     ticket = request.json["ticket"]
     key_ = request.json["key_"]
+    unique_id = request.json["unique_id"]
+
     is_active = True if request.json['active'] == "True" else False
     if not booking_exists(branch_id, service_name, ticket):
         final = dict()
         try:
             try:
-                final = create_booking_online_(service_name, start, branch_id, is_instant, user, kind=ticket, key=key_)
+                final = create_booking_online_(service_name, start, branch_id, is_instant, user, kind=ticket,
+                                               key=key_,unique_id=unique_id)
             except ValueError as err:
                 print(err)
         except sqlalchemy.exc.IntegrityError:
@@ -1157,6 +1160,7 @@ def sync_services():
     code = request.json["code"]
     icon_id = request.json["icon"]
     key = request.json["key"]
+    service = dict()
     try:
         key_data = get_online_by_key(key)
         if key_data:
@@ -1173,10 +1177,12 @@ def sycn_teller():
     service = request.json["service"]
     branch = request.json["branch"]
     number = request.json["number"]
+    unique_id = request.json["unique_id"]
+
     teller = dict()
     try:
         print(">>> teller data :", number, branch, service)
-        teller = add_teller(number, branch, service)
+        teller = add_teller(number, branch, service, unique_id)
     except sqlalchemy.exc.IntegrityError as e:
         print(e)
         print("Error! Teller could not be added Could not add the record.")
@@ -1248,7 +1254,7 @@ def services_exist(services, branch_id):
     return True
 
 
-def add_teller(teller_number, branch_id, service_name):
+def add_teller(teller_number, branch_id, service_name,unique_id):
     # here we are going to ad teller details
     # two words service name
 
@@ -1258,6 +1264,8 @@ def add_teller(teller_number, branch_id, service_name):
             final = {"msg": "Teller number exists"}, 500
         else:
             lookup = Teller(teller_number, branch_id, service_name)
+            lookup.unique_id  = unique_id
+
             db.session.add(lookup)
             db.session.commit()
             final = teller_schema.dump(lookup)
@@ -1267,6 +1275,8 @@ def add_teller(teller_number, branch_id, service_name):
             final = {"msg": "Teller number exists"}, 500
         else:
             lookup = Teller(teller_number, branch_id, service_name)
+            lookup.unique_id = unique_id
+
             db.session.add(lookup)
             db.session.commit()
             final = teller_schema.dump(lookup)
@@ -1473,7 +1483,7 @@ def update_branch_offline(key):
     return lookup_data
 
 
-def create_booking_online_(service_name, start, branch_id_, is_instant=False, user=0, kind=0, key=""):
+def create_booking_online_(service_name, start, branch_id_, is_instant=False, user=0, kind=0, key="",unique_id=""):
     data_ = update_branch_offline(key)
     branch_id = data_["id"] if data_ else 1
     if branch_is_medical(branch_id):
@@ -1485,13 +1495,14 @@ def create_booking_online_(service_name, start, branch_id_, is_instant=False, us
                 book = ticket_queue(service_name, branch_id)
                 last_ticket_number = book["ticket"]
                 next_ticket = int(last_ticket_number) + 1
-                final = make_booking(name, start, branch_id, next_ticket, instant=False, user=user, kind=kind)
+                final = make_booking(name, start, branch_id, next_ticket, instant=False, user=user, kind=kind,
+                                     unique_id=unique_id)
             else:
                 # we are making the first booking for this category
                 # we are going to make this ticket  active
                 next_ticket = 1
                 final = make_booking(name, start, branch_id, next_ticket, active=False, instant=False, user=user,
-                                     kind=kind)
+                                     kind=kind,unique_id=unique_id)
         else:
             raise ValueError("Service Does Not Exist. Please Add Service First.")
             final = True
@@ -1504,13 +1515,14 @@ def create_booking_online_(service_name, start, branch_id_, is_instant=False, us
                 book = ticket_queue(service_name, branch_id)
                 last_ticket_number = book["ticket"]
                 next_ticket = int(last_ticket_number) + 1
-                final = make_booking(name, start, branch_id, next_ticket, instant=is_instant, user=user, kind=kind)
+                final = make_booking(name, start, branch_id, next_ticket, instant=is_instant, user=user, kind=kind,
+                                     unique_id=unique_id)
             else:
                 # we are making the first booking for this category
                 # we are going to make this ticket  active
                 next_ticket = 1
                 final = make_booking(name, start, branch_id, next_ticket, active=False, instant=is_instant, user=user,
-                                     kind=kind)
+                                     kind=kind,unique_id=unique_id)
         else:
             raise ValueError("Service Does Not Exist. Please Add Service First.")
             final = True
@@ -1520,12 +1532,12 @@ def create_booking_online_(service_name, start, branch_id_, is_instant=False, us
 
 
 def make_booking(service_name, start="", branch_id=1, ticket=1, active=False, upcoming=False, serviced=False,
-                 teller=000, kind="1", user=0000, instant=False):
+                 teller=000, kind="1", user=0000, instant=False, unique_id=""):
     final = list()
     branch_data = branch_exist(branch_id)
     if branch_is_medical(branch_id):
         lookup = Booking(service_name, start, branch_id, ticket, active, upcoming, serviced, teller, kind, user, False,
-                         fowarded=False)
+                         fowarded=False,unique_id=unique_id)
         db.session.add(lookup)
         db.session.commit()
         data_ = dict()
@@ -1535,7 +1547,7 @@ def make_booking(service_name, start="", branch_id=1, ticket=1, active=False, up
         final = data_
     else:
         lookup = Booking(service_name, start, branch_id, ticket, active, upcoming, serviced, teller, kind, user,
-                         instant, fowarded=False)
+                         instant, fowarded=False,unique_id = unique_id)
         db.session.add(lookup)
         db.session.commit()
         data_ = dict()
@@ -1680,6 +1692,7 @@ def online_data(data):
 
 @sio.on('sync_service_')
 def sync_service_(data):
+    print("sync_service_ has been hit",data)
     requests.post(f"{link}/sycn/offline/services", json=data)
 
 

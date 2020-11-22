@@ -1139,7 +1139,7 @@ def sync_bookings():
     ticket = request.json["ticket"]
     key_ = request.json["key_"]
     unique_id = request.json["unique_id"]
-    is_synced = True if int(user) ==0 else False
+    is_synced = True if int(user) == 0 else False
     # is_active = True if request.json['active'] == "True" else False
 
     if not booking_exists_by_unique_id(unique_id):
@@ -1165,11 +1165,12 @@ def sync_services():
     code = request.json["code"]
     icon_id = request.json["icon"]
     key = request.json["key"]
+    unique_id = request.json["unique_id"]
     service = dict()
     try:
         key_data = get_online_by_key(key)
         if key_data:
-            service = create_service(name, teller, key_data["id"], code, icon_id)
+            service = create_service(name, teller, key_data["id"], code, icon_id, unique_id)
         else:
             service = dict()
     except sqlalchemy.exc.IntegrityError:
@@ -1183,10 +1184,8 @@ def sycn_teller():
     branch = request.json["branch"]
     number = request.json["number"]
     unique_id = request.json["unique_id"]
-
     teller = dict()
     try:
-        print(">>> teller data :", number, branch, service)
         teller = add_teller(number, branch, service, unique_id)
     except sqlalchemy.exc.IntegrityError as e:
         print(e)
@@ -1260,21 +1259,25 @@ def services_exist(services, branch_id):
 def add_teller(teller_number, branch_id, service_name, unique_id):
     # here we are going to ad teller details
     # two words service name
-
     if len(service_name.split(",")) > 1:
         # get teller by name
-        if get_teller(teller_number):
+        if get_teller(unique_id):
             final = {"msg": "Teller number exists"}, 500
         else:
             lookup = Teller(teller_number, branch_id, service_name)
             lookup.unique_id = unique_id
+            try:
+                db.session.add(lookup)
+                db.session.commit()
+                ack_successful_entity("TELLER", teller_schema.dump(lookup))
+            except sqlalchemy.exc.IntegrityError:
+                ack_failed_entity("TELLER", {"unique_id": unique_id})
+                log("Teller Already Exists.")
 
-            db.session.add(lookup)
-            db.session.commit()
             final = teller_schema.dump(lookup)
     else:
         # get teller by name
-        if get_teller(teller_number):
+        if get_teller(unique_id):
             final = {"msg": "Teller number exists"}, 500
         else:
             lookup = Teller(teller_number, branch_id, service_name)
@@ -1300,15 +1303,14 @@ def get_branch_by_key(key):
     return branch_schema.dump(lookup)
 
 
+# old sync module
 def sync_service(key):
     branch_data = get_branch_by_key(key)
     final = dict()
     if branch_data:
         # get last 20 bookings
         bookings_lookup = Booking.query.order_by(Booking.date_added).filter_by(nxt=1001).filter_by(
-            branch_id=branch_data[
-                "id"]).filter(Booking.user.between(0, 1000000000000000)).limit(
-            50).all()
+            branch_id=branch_data["id"]).filter(Booking.user.between(0, 1000000000000000)).limit(50).all()
         booking_data = bookings_schema.dump(bookings_lookup)
         final_booking_data = list()
         if booking_data:
@@ -1322,12 +1324,12 @@ def sync_service(key):
         service_lookup = Service.query.limit(20).all()
         service_data = services_schema.dump(service_lookup)
 
-        # branch _data ____>
+        # branch _data
         branches = sycn_branch_data(key)
         companies = sync_company_data()
+
         # branch_data font the company
-        final = {"bookings": final_booking_data, "services": service_data, "branches": branches, "companies":
-            companies}
+        final = {"bookings": final_booking_data, "services": service_data, "branches": branches, "companies": companies}
     # emit event
     return final
 
@@ -1355,45 +1357,79 @@ def sycn_branch_data(key):
     return final
 
 
-def create_service(name, teller, branch_id, code, icon_id):
+def create_service(name, teller, branch_id, code, icon_id, unique_id=""):
     if branch_exist(branch_id):
         final = None
-        if service_exists(name, branch_id):
+        if service_exists_by_unique_id(unique_id):
             final = {"msg": "Error service name already exists"}
         else:
             if get_service_code(code, branch_id):
                 final = {"msg": "Error Code already exists"}
             else:
-                service = ServiceOffered(name, branch_id, teller, code, 1)
-                db.session.add(service)
-                db.session.commit()
+                service = ServiceOffered(name, branch_id, teller, code, int(icon_id), unique_id)
+                service.is_synced = True
+                try:
+                    db.session.add(service)
+                    db.session.commit()
+                    ack_successful_entity("SERVICE", service_schema.dump(service))
+                except sqlalchemy.exc.IntegrityError as e:
+                    ack_failed_entity("SERVICE",{"unique_id" : unique_id})
+                    log("Service exists")
                 final = service_schema.dump(service)
     else:
         final = {"msg": "Service/Branch issue"}
     return final
 
 
-def create_service(name, teller, branch_id, code, icon_id):
-    if branch_exist(branch_id):
-        final = None
-        if service_exists(name, branch_id):
-            final = {"msg": "Error service name already exists", "status": None}
-        else:
-            if get_service_code(code, branch_id):
-                final = {"msg": "Error Code already exists", "status": None}
+def update_sync_all_data(data):
+    bookings = data["bookings"]
+    key = data["key"]
+    if branch_exists_key(key):
+        # we can sync
+        for booking in bookings:
+            # check if booking exists
+            if not booking_exists_unique(booking):
+                # booking does not exists
+                # add booking to the db
+                # flag the booking as synced now
+                id = booking["id"]
+                service_name = booking["service_name"]
+                start = booking["start"]
+                branch_id = booking["branch_id"]
+                ticket = booking["ticket"]  # replaces kind
+                active = booking["active"]
+                nxt = booking["nxt"]
+                serviced = booking["serviced"]
+                teller = booking["teller"]
+                kind = booking["kind"]
+                user = booking["user"]
+                is_instant = booking["is_instant"]
+                forwarded = booking["forwarded"]
+                is_synced = booking["is_synced"]
+                unique_id = booking["unique_id"]
+                # adding data to the database
+                create_booking(service_name, start, branch_id, bool(is_instant), user, unique_id, is_synced)
             else:
-                # check if icon exists for the branch
-                # if icon_exists(icon_id, branch_id):
-                # lookup = Icon.query.get(icon_id)
-                # data = icon_schema.dump(lookup)
-                # if data:
-                service = ServiceOffered(name, branch_id, teller, code, 1)
-                db.session.add(service)
-                db.session.commit()
-                final = service_schema.dump(service)
+                # booking exists
+                flag_booking_as_synced(booking)
     else:
-        final = {"msg": "Service/Branch issue", "status": None}
-    return final
+        print("branch data is not for this branch")
+    return dict()
+
+
+def booking_exists_unique(data):
+    return Booking.query.filter_by(unique_id=data["unique_id"]).first()
+
+
+def flag_booking_as_synced(data):
+    booking = booking_exists_unique(data)
+    booking.is_synced = True
+    return booking
+
+
+def branch_exists_key(key):
+    lookup = Branch.query.filter_by(key_=key).first()
+    return lookup
 
 
 # check if the user exists
@@ -1428,8 +1464,8 @@ def is_user(user_id):
     return user_data
 
 
-def get_teller(number):
-    lookup = Teller.query.filter_by(number=number).first()
+def get_teller(unique_id):
+    lookup = Teller.query.filter_by(unique_id=unique_id).first()
     data = teller_schema.dump(lookup)
     return data
 
@@ -1444,16 +1480,12 @@ def ticket_queue(service_name, branch_id):
 
 def create_booking(service_name, start, branch_id, is_instant, user_id):
     if service_exists(service_name, branch_id):
-        print(":::::::::::::::: service_exists")
         if is_user(user_id):
-            print(":::::::::::::::: user_exists")
             final = ""
             # get the service
             data = service_exists(service_name, branch_id)
             name = data["name"]
             if ticket_queue(service_name, branch_id):
-                print(":::::::::::::::: ticket queue")
-
                 # get last ticket is active next == True
                 # get the last booking
                 book = get_last_ticket(service_name, branch_id)
@@ -1477,7 +1509,6 @@ def create_booking(service_name, start, branch_id, is_instant, user_id):
         print("service does not exist")
         final = None
         logging.info("service does not exists")
-    print("Create booking .... ",final)
     return final
 
 
@@ -1570,8 +1601,23 @@ def make_booking(service_name, start="", branch_id=1, ticket=1, active=False, up
         db.session.add(lookup)
         db.session.commit()
         final = booking_schema.dump(lookup)
+        if final:
+            ack_successful_entity("BOOKING", final)
+        else:
+            ack_failed_entity("BOOKING", {"unique_id": unique_id})
+
         final.update({"key": branch_data["key_"]})
     return final
+
+
+def ack_successful_entity(name, data):
+    sio.emit("ack_successful_enitity", {"category": name, "data": data})
+    return data
+
+
+def ack_failed_entity(name, data):
+    sio.emit("ack_successful_enitity", {"category": name, "data": data})
+    return data
 
 
 def service_exists(name, branch_id):
@@ -1580,8 +1626,14 @@ def service_exists(name, branch_id):
     return data
 
 
+def service_exists_by_unique_id(name, branch_id):
+    lookup = ServiceOffered.query.filter_by(name=name).filter_by(branch_id=branch_id).first()
+    data = service_offered_schema.dump(lookup)
+    return data
+
+
 def get_last_ticket(service_name, branch_id):
-    '''also check last online ticket'''
+    """ Also check last online ticket """
     # here we are going to get the last ticket offline then make anew one base on that's
     # emit("last_ticket",{"branch_id":branch_id,"service_name": service_name})
 
@@ -1674,6 +1726,7 @@ def booking_exists(branch, service, tckt):
     data = booking_schema.dump(lookup)
     return data
 
+
 def booking_exists_by_unique_id(unique_id):
     lookup = Booking.query.filter_by(unique_id=unique_id).first()
     data = booking_schema.dump(lookup)
@@ -1688,6 +1741,11 @@ def get_service_code(code, branch_id):
     lookup = ServiceOffered.query.filter_by(name=code).filter_by(branch_id=branch_id).first()
     data = service_schema.dump(lookup)
     return data
+
+
+def log(msg):
+    print(f"{datetime.now().strftime('%d:%m:%Y %H:%M:%S')} — {msg}")
+    return True
 
 
 '''here we are going to reset tickets every midnight'''

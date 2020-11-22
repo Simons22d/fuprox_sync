@@ -4,8 +4,8 @@ from flask import request, jsonify, send_from_directory
 from fuprox import db, app
 from fuprox.models.models import (Branch, BranchSchema, Service, ServiceSchema, Company, CompanySchema, Help,
                                   HelpSchema, ServiceOffered, ServiceOfferedSchema, Booking, BookingSchema,
-                                  TellerSchema, Teller, Payments, PaymentSchema,Mpesa, MpesaSchema, Recovery,
-                                  RecoverySchema, ImageCompanySchema, ImageCompany,AccountStatus, AccountStatusSchema,
+                                  TellerSchema, Teller, Payments, PaymentSchema, Mpesa, MpesaSchema, Recovery,
+                                  RecoverySchema, ImageCompanySchema, ImageCompany, AccountStatus, AccountStatusSchema,
                                   Customer, CustomerSchema)
 from fuprox.utils.payments import authenticate, stk_push
 import secrets
@@ -697,24 +697,29 @@ def make_book():
     global mpesa_transaction_key
     mpesa_transaction_key = secrets.token_hex(10)
 
-    callback_url = f"http://{link_icon}:65123/mpesa/b2c/v1"
-    token_data = authenticate()
-    token = json.loads(token_data)["access_token"]
-    business_shortcode = "174379"
-    lipa_na_mpesapasskey = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
-    party_b = business_shortcode
+    payment = Payments("texts", mpesa_transaction_key)
+    db.session.add(payment)
+    db.session.commit()
 
-    if is_instant:
-        # we are going to request pay
-        amount = 10
-        stk_push(token, business_shortcode, lipa_na_mpesapasskey, amount, party_b, phonenumber,
-                 callback_url)
-    else:
-        # we are going to request pay
-        amount = 5
-        stk_push(token, business_shortcode, lipa_na_mpesapasskey, amount, party_b, phonenumber,
-                 callback_url)
-        # token will be used to check if transaction is successful
+    # callback_url = f"http://{link_icon}:65123/mpesa/b2c/v1"
+
+    # token_data = authenticate()
+    # token = json.loads(token_data)["access_token"]
+    # business_shortcode = "174379"
+    # lipa_na_mpesapasskey = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
+    # party_b = business_shortcode
+
+    # if is_instant:
+    #     # we are going to request pay
+    #     amount = 10
+    #     stk_push(token, business_shortcode, lipa_na_mpesapasskey, amount, party_b, phonenumber,
+    #              callback_url)
+    # else:
+    #     # we are going to request pay
+    #     amount = 5
+    #     stk_push(token, business_shortcode, lipa_na_mpesapasskey, amount, party_b, phonenumber,
+    #              callback_url)
+    # token will be used to check if transaction is successful
     return jsonify({"token": mpesa_transaction_key})
 
 
@@ -726,11 +731,12 @@ def make_book_():
     branch_id = request.json["branch_id"]
     user_id = request.json["user_id"]
     amount = request.json["amount"]
+
     # we are going to use the payments table to display;
-    lookup = Payments.query.filter_by(token=token).first()
-    print(lookup)
+    # lookup = Payments.query.filter_by(token=token).first()
+    # print(lookup)
     # main object
-    payment_data = payment_schema.dump(lookup)
+    # payment_data = payment_schema.dump(lookup)
     # print(">>>.",payment_data)
     # end
     # if payment_data:
@@ -755,12 +761,10 @@ def make_book_():
     #         final = {"msg": "Error With Payment", "error": result_desc}
     # else:
     #     final = {"msg": False, "result": "Token Invalid"}
-
     if int(amount) == 10:
         final = create_booking(service_name, start, branch_id, True, user_id)
         sio.emit("online", final)
     elif int(amount) == 5:
-
         final = create_booking(service_name, start, branch_id, False, user_id)
         sio.emit("online", final)
     return jsonify(final)
@@ -1135,14 +1139,15 @@ def sync_bookings():
     ticket = request.json["ticket"]
     key_ = request.json["key_"]
     unique_id = request.json["unique_id"]
+    is_synced = True if int(user) ==0 else False
+    # is_active = True if request.json['active'] == "True" else False
 
-    is_active = True if request.json['active'] == "True" else False
-    if not booking_exists(branch_id, service_name, ticket):
+    if not booking_exists_by_unique_id(unique_id):
         final = dict()
         try:
             try:
                 final = create_booking_online_(service_name, start, branch_id, is_instant, user, kind=ticket,
-                                               key=key_,unique_id=unique_id)
+                                               key=key_, unique_id=unique_id, is_synced=is_synced)
             except ValueError as err:
                 print(err)
         except sqlalchemy.exc.IntegrityError:
@@ -1234,8 +1239,6 @@ def reset():
     return jsonify(code)
 
 
-
-
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # functions >>>>>>>>>>>>>>>>>>>>>>>>
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -1254,7 +1257,7 @@ def services_exist(services, branch_id):
     return True
 
 
-def add_teller(teller_number, branch_id, service_name,unique_id):
+def add_teller(teller_number, branch_id, service_name, unique_id):
     # here we are going to ad teller details
     # two words service name
 
@@ -1264,7 +1267,7 @@ def add_teller(teller_number, branch_id, service_name,unique_id):
             final = {"msg": "Teller number exists"}, 500
         else:
             lookup = Teller(teller_number, branch_id, service_name)
-            lookup.unique_id  = unique_id
+            lookup.unique_id = unique_id
 
             db.session.add(lookup)
             db.session.commit()
@@ -1441,12 +1444,16 @@ def ticket_queue(service_name, branch_id):
 
 def create_booking(service_name, start, branch_id, is_instant, user_id):
     if service_exists(service_name, branch_id):
+        print(":::::::::::::::: service_exists")
         if is_user(user_id):
+            print(":::::::::::::::: user_exists")
             final = ""
             # get the service
             data = service_exists(service_name, branch_id)
             name = data["name"]
             if ticket_queue(service_name, branch_id):
+                print(":::::::::::::::: ticket queue")
+
                 # get last ticket is active next == True
                 # get the last booking
                 book = get_last_ticket(service_name, branch_id)
@@ -1463,11 +1470,14 @@ def create_booking(service_name, start, branch_id, is_instant, user_id):
                 next_ticket = 1
                 final = make_booking(name, start, branch_id, next_ticket, active=True, instant=is_instant, user=user_id)
         else:
+            print("user_does not exist")
             final = None
             logging.info("user does not exist")
     else:
+        print("service does not exist")
         final = None
         logging.info("service does not exists")
+    print("Create booking .... ",final)
     return final
 
 
@@ -1483,7 +1493,8 @@ def update_branch_offline(key):
     return lookup_data
 
 
-def create_booking_online_(service_name, start, branch_id_, is_instant=False, user=0, kind=0, key="",unique_id=""):
+def create_booking_online_(service_name, start, branch_id_, is_instant=False, user=0, kind=0, key="", unique_id="",
+                           is_synced=""):
     data_ = update_branch_offline(key)
     branch_id = data_["id"] if data_ else 1
     if branch_is_medical(branch_id):
@@ -1496,13 +1507,13 @@ def create_booking_online_(service_name, start, branch_id_, is_instant=False, us
                 last_ticket_number = book["ticket"]
                 next_ticket = int(last_ticket_number) + 1
                 final = make_booking(name, start, branch_id, next_ticket, instant=False, user=user, kind=kind,
-                                     unique_id=unique_id)
+                                     unique_id=unique_id, is_synced=is_synced)
             else:
                 # we are making the first booking for this category
                 # we are going to make this ticket  active
                 next_ticket = 1
                 final = make_booking(name, start, branch_id, next_ticket, active=False, instant=False, user=user,
-                                     kind=kind,unique_id=unique_id)
+                                     kind=kind, unique_id=unique_id, is_synced=is_synced)
         else:
             raise ValueError("Service Does Not Exist. Please Add Service First.")
             final = True
@@ -1516,13 +1527,13 @@ def create_booking_online_(service_name, start, branch_id_, is_instant=False, us
                 last_ticket_number = book["ticket"]
                 next_ticket = int(last_ticket_number) + 1
                 final = make_booking(name, start, branch_id, next_ticket, instant=is_instant, user=user, kind=kind,
-                                     unique_id=unique_id)
+                                     unique_id=unique_id, is_synced=is_synced)
             else:
                 # we are making the first booking for this category
                 # we are going to make this ticket  active
                 next_ticket = 1
                 final = make_booking(name, start, branch_id, next_ticket, active=False, instant=is_instant, user=user,
-                                     kind=kind,unique_id=unique_id)
+                                     kind=kind, unique_id=unique_id, is_synced=is_synced)
         else:
             raise ValueError("Service Does Not Exist. Please Add Service First.")
             final = True
@@ -1532,7 +1543,7 @@ def create_booking_online_(service_name, start, branch_id_, is_instant=False, us
 
 
 def make_booking(service_name, start="", branch_id=1, ticket=1, active=False, upcoming=False, serviced=False,
-                 teller=000, kind="1", user=0000, instant=False, unique_id=""):
+                 teller=000, kind="1", user=0000, instant=False, unique_id="", is_synced=""):
     final = list()
     branch_data = branch_exist(branch_id)
     if branch_is_medical(branch_id):
@@ -1540,27 +1551,26 @@ def make_booking(service_name, start="", branch_id=1, ticket=1, active=False, up
                          fowarded=False)
         if unique_id:
             lookup.unique_id = unique_id
+        if is_synced:
+            lookup.is_synced = True
 
         db.session.add(lookup)
         db.session.commit()
-        data_ = dict()
-        key_data = {"key": branch_data["key_"]}
-        data_.update(key_data)
-        data_.update(booking_schema.dump(lookup))
-        final = data_
+        final = booking_schema.dump(lookup)
+        final.update({"key": branch_data["key_"]})
     else:
         lookup = Booking(service_name, start, branch_id, ticket, active, upcoming, serviced, teller, kind, user,
                          instant, fowarded=False)
         if unique_id:
             lookup.unique_id = unique_id
 
+        if is_synced:
+            lookup.is_synced = True
+
         db.session.add(lookup)
         db.session.commit()
-        data_ = dict()
-        key_data = {"key": branch_data["key_"]}
-        data_.update(key_data)
-        data_.update(booking_schema.dump(lookup))
-        final = data_
+        final = booking_schema.dump(lookup)
+        final.update({"key": branch_data["key_"]})
     return final
 
 
@@ -1664,6 +1674,15 @@ def booking_exists(branch, service, tckt):
     data = booking_schema.dump(lookup)
     return data
 
+def booking_exists_by_unique_id(unique_id):
+    lookup = Booking.query.filter_by(unique_id=unique_id).first()
+    data = booking_schema.dump(lookup)
+    if data:
+        final = True
+    else:
+        final = False
+    return final
+
 
 def get_service_code(code, branch_id):
     lookup = ServiceOffered.query.filter_by(name=code).filter_by(branch_id=branch_id).first()
@@ -1677,7 +1696,6 @@ def get_service_code(code, branch_id):
 @sio.event
 def connect():
     print('connection established')
-
 
 
 @sio.event
@@ -1698,7 +1716,7 @@ def online_data(data):
 
 @sio.on('sync_service_')
 def sync_service_(data):
-    print("sync_service_ has been hit",data)
+    print("sync_service_ has been hit", data)
     requests.post(f"{link}/sycn/offline/services", json=data)
 
 
@@ -1707,15 +1725,7 @@ def update_ticket_data(data):
     requests.post(f"{link}/update/ticket", json=data)
 
 
-# update online ticket data status
-@sio.on("offline_booking_status_to_online_data")
-def sync_ticket_status_active(data):
-    '''TODO: UPDATE TICKET STATUS TO ACTIVE '''
-    pass
-
-
 """
-::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 syncing all offline data
 """
 
@@ -1726,7 +1736,6 @@ def sync_offline_data(data):
     # appropriate end point
     if data:
         parsed_data = dict(data)
-
         if parsed_data:
             if parsed_data["services"]:
                 # deal with services offered

@@ -1537,7 +1537,10 @@ def make_booking(service_name, start="", branch_id=1, ticket=1, active=False, up
     branch_data = branch_exist(branch_id)
     if branch_is_medical(branch_id):
         lookup = Booking(service_name, start, branch_id, ticket, active, upcoming, serviced, teller, kind, user, False,
-                         fowarded=False,unique_id=unique_id)
+                         fowarded=False)
+        if unique_id:
+            lookup.unique_id = unique_id
+
         db.session.add(lookup)
         db.session.commit()
         data_ = dict()
@@ -1547,7 +1550,10 @@ def make_booking(service_name, start="", branch_id=1, ticket=1, active=False, up
         final = data_
     else:
         lookup = Booking(service_name, start, branch_id, ticket, active, upcoming, serviced, teller, kind, user,
-                         instant, fowarded=False,unique_id = unique_id)
+                         instant, fowarded=False)
+        if unique_id:
+            lookup.unique_id = unique_id
+
         db.session.add(lookup)
         db.session.commit()
         data_ = dict()

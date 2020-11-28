@@ -1149,11 +1149,14 @@ def sync_bookings():
                 final = create_booking_online_(service_name, start, branch_id, is_instant, user, kind=ticket,
                                                key=key_, unique_id=unique_id, is_synced=is_synced)
             except ValueError as err:
-                print(err)
+                log(err)
         except sqlalchemy.exc.IntegrityError:
-            print("Error! Could not create booking.")
+            log("Error! Could not create booking.")
     else:
+        print("##############@@@@@@@@@@@@@@@@@$$$$$$$$$$%%%%%%%%%%")
         final = {"msg": "booking exists"}
+        ack_successful_entity("BOOKING", {"unique_id":unique_id})
+        log(f"booking exists - {unique_id}")
     return final
 
 
@@ -1263,22 +1266,28 @@ def add_teller(teller_number, branch_id, service_name, unique_id):
         # get teller by name
         if get_teller(unique_id):
             final = {"msg": "Teller number exists"}, 500
+            # log(f"teller exists - {unique_id}")
         else:
             lookup = Teller(teller_number, branch_id, service_name)
             lookup.unique_id = unique_id
             try:
                 db.session.add(lookup)
                 db.session.commit()
+                print("added")
                 ack_successful_entity("TELLER", teller_schema.dump(lookup))
+                log(f"teller synced + {unique_id}")
             except sqlalchemy.exc.IntegrityError:
                 ack_failed_entity("TELLER", {"unique_id": unique_id})
-                log("Teller Already Exists.")
+                # log(f"teller exists - {unique_id}")
+                ack_successful_entity("TELLER", {"data": {"unique_id": unique_id}})
 
             final = teller_schema.dump(lookup)
     else:
         # get teller by name
         if get_teller(unique_id):
             final = {"msg": "Teller number exists"}, 500
+            log(f"teller exists - {unique_id}")
+            ack_successful_entity("TELLER", {"unique_id" : unique_id})
         else:
             lookup = Teller(teller_number, branch_id, service_name)
             lookup.unique_id = unique_id
@@ -1286,8 +1295,8 @@ def add_teller(teller_number, branch_id, service_name, unique_id):
             db.session.add(lookup)
             db.session.commit()
             final = teller_schema.dump(lookup)
+            log(f"teller synced + {unique_id}")
 
-        print("finale >>>>", final)
     return final
 
 
@@ -1303,33 +1312,41 @@ def get_branch_by_key(key):
     return branch_schema.dump(lookup)
 
 
-# old sync module
+# new sync implementation
+# get all data online to offline
+def get_sync_all_data(key):
+    # get all booking
+    bookings_to_sync = get_all_unsyced_bookings()
+    # return the data
+    final = {"bookings": bookings_to_sync, "key": key}
+    return final
+
+
+def get_all_unsyced_bookings(branch_key):
+    branch = get_branch_by_key(branch_key)
+    online = Booking.query.filter_by(nxt=1001).filter_by(active=False).filter_by(branch_id=branch["id"]).filter_by(
+        serviced=False).filter_by(is_synced=False).all()
+    online_bookings = bookings_schema.dump(online)
+    return online_bookings
+
+
+@app.route("/bookings/to/sycn",methods=["POST"])
+def test__():
+    key = request.json["key"]
+    data = sync_service(key)
+    final = list()
+    for record in data:
+        final.append(record["unique_id"])
+    return jsonify(data)
+
+
+
 def sync_service(key):
     branch_data = get_branch_by_key(key)
     final = dict()
     if branch_data:
-        # get last 20 bookings
-        bookings_lookup = Booking.query.order_by(Booking.date_added).filter_by(nxt=1001).filter_by(
-            branch_id=branch_data["id"]).filter(Booking.user.between(0, 1000000000000000)).limit(50).all()
-        booking_data = bookings_schema.dump(bookings_lookup)
-        final_booking_data = list()
-        if booking_data:
-            for booking in booking_data:
-                final = dict()
-                branch_key_data = {"key": key}
-                final.update(booking)
-                final.update(branch_key_data)
-                final_booking_data.append(final)
-        # get service
-        service_lookup = Service.query.limit(20).all()
-        service_data = services_schema.dump(service_lookup)
-
-        # branch _data
-        branches = sycn_branch_data(key)
-        companies = sync_company_data()
-
         # branch_data font the company
-        final = {"bookings": final_booking_data, "services": service_data, "branches": branches, "companies": companies}
+        final = get_all_unsyced_bookings(key)
     # emit event
     return final
 
@@ -1356,25 +1373,32 @@ def sycn_branch_data(key):
     # get all the branches for that company
     return final
 
-
+# sycing off line services
 def create_service(name, teller, branch_id, code, icon_id, unique_id=""):
     if branch_exist(branch_id):
         final = None
         if service_exists_by_unique_id(unique_id):
             final = {"msg": "Error service name already exists"}
+            log(f"service exists - {unique_id}")
+            ack_successful_entity("SERVICE", {"unique_id": unique_id})
         else:
             if get_service_code(code, branch_id):
                 final = {"msg": "Error Code already exists"}
+                log(f"service exists [code] - {unique_id} - {code}")
+                ack_successful_entity("SERVICE", {"unique_id":unique_id})
+
             else:
-                service = ServiceOffered(name, branch_id, teller, code, int(icon_id), unique_id)
+                service = ServiceOffered(name, branch_id, teller, code, int(icon_id))
+                service.unique_id = unique_id
                 service.is_synced = True
                 try:
                     db.session.add(service)
                     db.session.commit()
                     ack_successful_entity("SERVICE", service_schema.dump(service))
+                    log(f"service synced + {unique_id}")
                 except sqlalchemy.exc.IntegrityError as e:
-                    ack_failed_entity("SERVICE",{"unique_id" : unique_id})
-                    log("Service exists")
+                    ack_failed_entity("SERVICE", {"unique_id": unique_id})
+                    log(f"service exists - {unique_id}")
                 final = service_schema.dump(service)
     else:
         final = {"msg": "Service/Branch issue"}
@@ -1411,20 +1435,23 @@ def update_sync_all_data(data):
                 create_booking(service_name, start, branch_id, bool(is_instant), user, unique_id, is_synced)
             else:
                 # booking exists
+                log("EXISTS.........")
                 flag_booking_as_synced(booking)
+                ack_successful_entity("BOOKING", booking)
     else:
         print("branch data is not for this branch")
     return dict()
 
 
 def booking_exists_unique(data):
-    return Booking.query.filter_by(unique_id=data["unique_id"]).first()
+    final = Booking.query.filter_by(unique_id=data["unique_id"]).first()
+    return final
 
 
-def flag_booking_as_synced(data):
-    booking = booking_exists_unique(data)
-    booking.is_synced = True
-    return booking
+# def flag_booking_as_synced(data):
+#     booking = booking_exists_unique(data)
+#     booking.is_synced = True
+#     return booking
 
 
 def branch_exists_key(key):
@@ -1588,7 +1615,14 @@ def make_booking(service_name, start="", branch_id=1, ticket=1, active=False, up
         db.session.add(lookup)
         db.session.commit()
         final = booking_schema.dump(lookup)
+        if final:
+            ack_successful_entity("BOOKING", final)
+            log(f"service synced + {unique_id}")
+        else:
+            ack_failed_entity("BOOKING", {"unique_id": unique_id})
+            log(f"Error Booking + {unique_id}")
         final.update({"key": branch_data["key_"]})
+
     else:
         lookup = Booking(service_name, start, branch_id, ticket, active, upcoming, serviced, teller, kind, user,
                          instant, fowarded=False)
@@ -1603,20 +1637,24 @@ def make_booking(service_name, start="", branch_id=1, ticket=1, active=False, up
         final = booking_schema.dump(lookup)
         if final:
             ack_successful_entity("BOOKING", final)
+            log(f"service synced + {unique_id}")
         else:
+            print("**************************N********NNNN************")
             ack_failed_entity("BOOKING", {"unique_id": unique_id})
+            log(f"Error Booking + {unique_id}")
 
         final.update({"key": branch_data["key_"]})
     return final
 
 
 def ack_successful_entity(name, data):
+    print("ack hit ......................................",name)
     sio.emit("ack_successful_enitity", {"category": name, "data": data})
     return data
 
 
 def ack_failed_entity(name, data):
-    sio.emit("ack_successful_enitity", {"category": name, "data": data})
+    sio.emit("ack_failed_enitity", {"category": name, "data": data})
     return data
 
 
@@ -1626,8 +1664,8 @@ def service_exists(name, branch_id):
     return data
 
 
-def service_exists_by_unique_id(name, branch_id):
-    lookup = ServiceOffered.query.filter_by(name=name).filter_by(branch_id=branch_id).first()
+def service_exists_by_unique_id(unique_id):
+    lookup = ServiceOffered.query.filter_by(unique_id=unique_id).first()
     data = service_offered_schema.dump(lookup)
     return data
 
@@ -1728,13 +1766,13 @@ def booking_exists(branch, service, tckt):
 
 
 def booking_exists_by_unique_id(unique_id):
-    lookup = Booking.query.filter_by(unique_id=unique_id).first()
-    data = booking_schema.dump(lookup)
-    if data:
-        final = True
-    else:
-        final = False
-    return final
+    return Booking.query.filter_by(unique_id=unique_id).first()
+
+
+@app.route("/booking/test", methods=["POST"])
+def bkg_test():
+    id = request.json["id"]
+    return jsonify(booking_schema.dump(booking_exists_by_unique_id(id)))
 
 
 def get_service_code(code, branch_id):
@@ -1798,28 +1836,154 @@ def sync_offline_data(data):
             if parsed_data["services"]:
                 # deal with services offered
                 for service in parsed_data["services"]:
+                    service.update({"key": parsed_data["key"]})
                     requests.post(f"{link}/sycn/offline/services", json=service)
-                    time.sleep(0.5)
 
             if parsed_data["tellers"]:
                 for teller_ in parsed_data["tellers"]:
+                    teller_.update({"key_": parsed_data["key"]})
                     requests.post(f"{link}/sycn/offline/teller", json=teller_)
-                    time.sleep(0.5)
 
             if parsed_data["bookings"]:
                 # deal with bookings
                 for booking in parsed_data["bookings"]:
+                    booking.update({"key_": parsed_data["key"]})
                     requests.post(f"{link}/sycn/online/booking", json=booking)
-                    time.sleep(0.5)
 
             # this key here  will trigger the data for a specific branch to be
-            # fetched and pushed down the backend module.
-            # # in the backed we should check to make sure only certain branch data is copied to itself
+            # fetched and pushed down to the backend module.
+            data = sync_service(parsed_data["key"])
+            final = list()
+            key = parsed_data["key"]
+            # data.append(key)
+            final.append(data)
+            final.append(key)
             if parsed_data["key"]:
-                # send online data back to the desktop app
-                sio.emit("all_sync_online", sync_service(parsed_data["key"]))
-            # emit data to some a function
+                sio.emit("all_sync_online", {"data": final})
 
+
+# ---------------------------------
+# ------ ACKS from offline --------
+# ---------------------------------
+
+
+def ack_teller_fail(data):
+    # check if it exists -> if true -> flag as synced if not { inform user of synced }  -> else trigger a sync
+    teller = teller_exists_unique(data["data"]["unique_id"])
+    if teller:
+        if teller["is_synced"]:
+            # teller is synced
+            log("Teller Already Synced")
+
+        else:
+            # teller does not exists
+            # trigger async
+            sio.emit("add_teller", {"teller_data": data["data"]})
+
+
+def ack_booking_fail(data):
+    booking = booking_exists_unique(data)
+    if booking:
+        if booking.is_synced:
+            # booking is synced
+            log("Booking Already Synced")
+        else:
+            # booking is not synced
+            # trigger async
+            sio.emit("online_", {"booking_data": data})
+
+
+def ack_service_fail(data):
+    # check if it exists -> if true -> flag as synced if not { inform user of synced }  -> else trigger a sync
+    service = service_exists_unique(data["data"]["unique_id"])
+    if service:
+        if service["is_synced"]:
+            log("Service Already Synced")
+        else:
+            sio.emit("sync_service", data["data"])
+
+
+def ack_teller_success(data):
+    # flag as sycned here based on unique key
+    return flag_teller_as_synced(data)
+
+
+def ack_service_success(data):
+    # flag as sycned here based on unique key
+    return flag_service_as_synced(data)
+
+
+def ack_booking_success(data):
+    # flag as sycned here based on unique key
+    return flag_booking_as_synced(data)
+
+
+def teller_exists_unique(unique_id):
+    return Teller.query.filter_by(unique_id=unique_id).first()
+
+
+def service_exists_unique(unique_id):
+    return ServiceOffered.query.filter_by(unique_id=unique_id).first()
+
+
+def is_this_branch(key):
+    return branch_exists_key(key)
+
+
+ack_mapper_success = {
+    "SERVICE": ack_service_success,
+    "TELLER": ack_teller_success,
+    "BOOKING": ack_booking_success
+}
+
+ack_mapper_fail = {
+    "SERVICE": ack_service_fail,
+    "TELLER": ack_teller_fail,
+    "BOOKING": ack_booking_fail
+}
+
+
+# ack_successful_enitity_online_data
+@sio.on("ack_successful_enitity_online_data")
+def ack_successful_enitity_online_data_(data):
+    log("offline -> online sync [success]")
+    # categories = SERVICE TELLER BOOKING
+    ack_mapper_success[data["category"]](data["data"])
+
+
+@sio.on("ack_failed_enitity_online_data")
+def ack_failed_enitity_online_data_(data):
+    if data:
+        log("offline -> online sync [failed]")
+        ack_mapper_fail[data["category"]](data["data"])
+
+
+def flag_booking_as_synced(data):
+    booking = booking_exists_unique(data)
+    if booking:
+        booking.is_synced = True
+        db.session.commit()
+    return booking
+
+
+def flag_service_as_synced(data):
+    service = booking_exists_unique(data)
+    if service:
+        service.is_synced = True
+        db.session.commit
+    return service
+
+
+def flag_teller_as_synced(data):
+    teller = booking_exists_unique(data)
+    if teller:
+        teller.is_synced = True
+    return teller
+
+
+# ---------------------------------
+# ------------END------------------
+# ---------------------------------
 
 @sio.on("add_teller_data")
 def add_teller_data(data):

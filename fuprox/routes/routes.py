@@ -1243,7 +1243,7 @@ def reset():
 
 @app.route("/init/sync/online",methods=["POST"])
 def init_sync():
-    branch = request.json["branch"]
+    branch = request.json["key"]
     sio.emit("init_sync", {"key" : branch})
     return dict()
 

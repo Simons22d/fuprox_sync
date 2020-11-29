@@ -1241,6 +1241,14 @@ def reset():
     return jsonify(code)
 
 
+@app.route("/init/sync/online",methods=["POST"])
+def init_sync():
+    branch = request.json["branch"]
+    sio.emit("init_sync", {"key" : branch})
+    return dict()
+
+
+
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # functions >>>>>>>>>>>>>>>>>>>>>>>>
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>

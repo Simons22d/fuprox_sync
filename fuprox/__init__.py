@@ -26,6 +26,17 @@ jwt = JWTManager(app)
 app.config["SQLALCHEMY_DATABASE_URI"] = f"mysql+mysqlconnector://{db_user}:{db_pass}@localhost:3306/fuprox"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+    "max_overflow": 1024,
+    "pool_pre_ping": True,
+    "pool_recycle": 3600,
+    "pool_size": 1500
+}
+
+app.config["SQLALCHEMY_POOL_TIMEOUT"] = 5
+app.config['MAX_CONTENT_LENGTH'] = 2048 * 1024 * 1024
+
+
 # app bindings
 bcrypt = Bcrypt(app)
 db = SQLAlchemy(app)

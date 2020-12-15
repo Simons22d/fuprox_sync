@@ -1141,22 +1141,21 @@ def sync_bookings():
     unique_id = request.json["unique_id"]
     is_synced = True if int(user) == 0 else False
     # is_active = True if request.json['active'] == "True" else False
+    serviced = True if request.json['serviced'] == "True" else False
 
     if not booking_exists_by_unique_id(unique_id):
         final = dict()
         try:
             try:
                 final = create_booking_online_(service_name, start, branch_id, is_instant, user, kind=ticket,
-                                               key=key_, unique_id=unique_id, is_synced=is_synced)
+                                               key=key_, unique_id=unique_id, is_synced=is_synced,serviced=serviced)
             except ValueError as err:
                 log(err)
         except sqlalchemy.exc.IntegrityError:
             log("Error! Could not create booking.")
     else:
-        print("##############@@@@@@@@@@@@@@@@@$$$$$$$$$$%%%%%%%%%%")
         final = {"msg": "booking exists"}
         ack_successful_entity("BOOKING", {"unique_id":unique_id})
-        log(f"booking exists - {unique_id}")
     return final
 
 
@@ -1201,7 +1200,6 @@ def update_tickets_():
     # get branch by key
     key = request.json["key_"]
     service_name = request.json["service_name"]
-    # branch_id = request.json["branch_id"]
     ticket = request.json["ticket"]
     branch_data = get_online_by_key(key)
     final = dict()
@@ -1215,7 +1213,6 @@ def update_tickets_():
             booking_lookup.serviced = True
             db.session.commit()
             final = booking_schema.dump(booking_lookup)
-
     return final
 
 
@@ -1560,7 +1557,7 @@ def update_branch_offline(key):
 
 
 def create_booking_online_(service_name, start, branch_id_, is_instant=False, user=0, kind=0, key="", unique_id="",
-                           is_synced=""):
+                           is_synced="",serviced=False):
     data_ = update_branch_offline(key)
     branch_id = data_["id"] if data_ else 1
     if branch_is_medical(branch_id):
@@ -1573,13 +1570,13 @@ def create_booking_online_(service_name, start, branch_id_, is_instant=False, us
                 last_ticket_number = book["ticket"]
                 next_ticket = int(last_ticket_number) + 1
                 final = make_booking(name, start, branch_id, next_ticket, instant=False, user=user, kind=kind,
-                                     unique_id=unique_id, is_synced=is_synced)
+                                     unique_id=unique_id, is_synced=is_synced,serviced=serviced)
             else:
                 # we are making the first booking for this category
                 # we are going to make this ticket  active
                 next_ticket = 1
                 final = make_booking(name, start, branch_id, next_ticket, active=False, instant=False, user=user,
-                                     kind=kind, unique_id=unique_id, is_synced=is_synced)
+                                     kind=kind, unique_id=unique_id, is_synced=is_synced,serviced=serviced)
         else:
             raise ValueError("Service Does Not Exist. Please Add Service First.")
             final = True
@@ -1593,13 +1590,13 @@ def create_booking_online_(service_name, start, branch_id_, is_instant=False, us
                 last_ticket_number = book["ticket"]
                 next_ticket = int(last_ticket_number) + 1
                 final = make_booking(name, start, branch_id, next_ticket, instant=is_instant, user=user, kind=kind,
-                                     unique_id=unique_id, is_synced=is_synced)
+                                     unique_id=unique_id, is_synced=is_synced,serviced=serviced)
             else:
                 # we are making the first booking for this category
                 # we are going to make this ticket  active
                 next_ticket = 1
                 final = make_booking(name, start, branch_id, next_ticket, active=False, instant=is_instant, user=user,
-                                     kind=kind, unique_id=unique_id, is_synced=is_synced)
+                                     kind=kind, unique_id=unique_id, is_synced=is_synced,serviced=serviced)
         else:
             raise ValueError("Service Does Not Exist. Please Add Service First.")
             final = True
@@ -1619,6 +1616,8 @@ def make_booking(service_name, start="", branch_id=1, ticket=1, active=False, up
             lookup.unique_id = unique_id
         if is_synced:
             lookup.is_synced = True
+        if serviced :
+            lookup.serviced = True
 
         db.session.add(lookup)
         db.session.commit()
@@ -1639,6 +1638,9 @@ def make_booking(service_name, start="", branch_id=1, ticket=1, active=False, up
 
         if is_synced:
             lookup.is_synced = True
+
+        if serviced :
+            lookup.serviced = True
 
         db.session.add(lookup)
         db.session.commit()

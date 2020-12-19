@@ -1864,6 +1864,25 @@ def update_ticket_data(data):
     requests.post(f"{link}/update/ticket", json=data)
 
 
+def booking_is_serviced(booking):
+    book = Booking.query.filter_by(unique_id=booking["unique_id"]).first()
+    return book.serviced
+
+
+def update_booking_by_unique_id(bookings):
+    for booking in bookings:
+        booking = booking_exists_by_unique_id(booking["unique_id"])
+        if booking:
+            if booking_is_serviced():
+                booking.serviced = True
+                db.session.commit()
+        else:
+            # request offline data for sync
+            sio.emit("booking_update", booking["unique_id"])
+            return {"msg": "trigger sync"}
+            log("trigger sync")
+
+
 """
 syncing all offline data
 """
@@ -1893,6 +1912,9 @@ def sync_offline_data(data):
                     booking.update({"key_": parsed_data["key"]})
                     requests.post(f"{link}/sycn/online/booking", json=booking)
 
+            if parsed_data["bookings_verify"]:
+                update_booking_by_unique_id(parsed_data["bookings_verify"])
+
             # this key here  will trigger the data for a specific branch to be
             # fetched and pushed down to the backend module.
             data = sync_service(parsed_data["key"])
@@ -1903,6 +1925,12 @@ def sync_offline_data(data):
             final.append(key)
             if parsed_data["key"]:
                 sio.emit("all_sync_online", {"data": final})
+
+
+# booking_resync_data
+@sio.on("booking_resync_data")
+def booking_resync_data_(data):
+    return requests.post(f"{link}/sycn/online/booking", json=data)
 
 
 # ---------------------------------
@@ -1917,7 +1945,6 @@ def ack_teller_fail(data):
         if teller["is_synced"]:
             # teller is synced
             log("Teller Already Synced")
-
         else:
             # teller does not exists
             # trigger async

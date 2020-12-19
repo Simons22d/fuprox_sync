@@ -1864,23 +1864,25 @@ def update_ticket_data(data):
     requests.post(f"{link}/update/ticket", json=data)
 
 
-def booking_is_serviced(booking):
-    book = Booking.query.filter_by(unique_id=booking["unique_id"]).first()
+def booking_is_serviced(unique_id):
+    book = Booking.query.filter_by(unique_id=unique_id).first()
     return book.serviced
 
 
 def update_booking_by_unique_id(bookings):
     for booking in bookings:
-        booking = booking_exists_by_unique_id(booking["unique_id"])
+        unique_id = booking["unique_id"]
+        status = booking["serviced"]
+        booking = booking_exists_by_unique_id(unique_id)
         if booking:
-            if booking_is_serviced():
-                booking.serviced = True
-                db.session.commit()
+            if bool(status):
+                if not booking_is_serviced(unique_id):
+                    booking.serviced = True
+                    db.session.commit()
         else:
             # request offline data for sync
-            sio.emit("booking_update", booking["unique_id"])
-            return {"msg": "trigger sync"}
-            log("trigger sync")
+            sio.emit("booking_update", unique_id)
+    return dict()
 
 
 """

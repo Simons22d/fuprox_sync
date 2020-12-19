@@ -181,6 +181,7 @@ class Teller(db.Model):
     service = db.Column(db.String(200))
     unique_id = db.Column(db.String(255), default=ticket_unique, unique=True)
     is_synced = db.Column(db.Boolean, default=False)
+    branch_unique_id = db.Column(db.ForeignKey("branch.unique_id"))
 
     def __init__(self, number, branch, service):
         self.number = number
@@ -190,7 +191,7 @@ class Teller(db.Model):
 
 class TellerSchema(ma.Schema):
     class Meta:
-        fields = ("id", "number", "date_added", "branch", "service", "is_synced", "unique_id")
+        fields = ("id", "number", "date_added", "branch", "service", "is_synced", "unique_id", "branch_unique_id")
 
 
 '''

@@ -29,6 +29,7 @@ from fuprox.utils.email import body, password_changed, code_body
 import random, requests
 from pathlib import Path
 import os
+import subprocess
 
 link = "http://localhost:4000"
 link_icon = "159.65.144.235"
@@ -1573,7 +1574,6 @@ def update_branch_offline(key):
 
 def create_booking_online_(service_name, start, branch_id_, is_instant=False, user=0, kind=0, key="", unique_id="",
                            is_synced="", serviced=False):
-
     data_ = update_branch_offline(key)
     branch_id = data_["id"] if data_ else 1
     if branch_is_medical(branch_id):
@@ -1623,6 +1623,7 @@ def create_booking_online_(service_name, start, branch_id_, is_instant=False, us
     # print("the final output of the fuction >>>>", final)
     time.sleep(5)
     return final
+
 
 # requests.exceptions.ConnectionError: HTTPConnectionPool
 
@@ -1845,7 +1846,6 @@ def online_data(data):
         pass
 
 
-
 @sio.on('sync_service_')
 def sync_service_(data):
     try:
@@ -1853,6 +1853,7 @@ def sync_service_(data):
         time.sleep(1)
     except requests.exceptions.ConnectionError:
         # we are going to call script to restart this script
+        # subprocess.run("systemctl")
         pass
 
 

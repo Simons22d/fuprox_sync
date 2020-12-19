@@ -1189,9 +1189,10 @@ def sycn_teller():
     branch = request.json["branch"]
     number = request.json["number"]
     unique_id = request.json["unique_id"]
+    branch_unique_id = request.json["branch_unique_id"]
     teller = dict()
     try:
-        teller = add_teller(number, branch, service, unique_id)
+        teller = add_teller(number, branch, service, unique_id,branch_unique_id)
     except sqlalchemy.exc.IntegrityError as e:
         print(e)
         print("Error! Teller could not be added Could not add the record.")
@@ -1269,7 +1270,7 @@ def services_exist(services, branch_id):
     return True
 
 
-def add_teller(teller_number, branch_id, service_name, unique_id):
+def add_teller(teller_number, branch_id, service_name, unique_id,branch_unique_id):
     # here we are going to ad teller details
     # two words service name
     if not teller_exists_unique(unique_id):
@@ -1279,7 +1280,7 @@ def add_teller(teller_number, branch_id, service_name, unique_id):
                 final = {"msg": "Teller number exists"}, 500
                 # log(f"teller exists - {unique_id}")
             else:
-                lookup = Teller(teller_number, branch_id, service_name)
+                lookup = Teller(teller_number, branch_id, service_name,branch_unique_id)
                 lookup.unique_id = unique_id
                 try:
                     db.session.add(lookup)
@@ -1300,7 +1301,7 @@ def add_teller(teller_number, branch_id, service_name, unique_id):
                 log(f"teller exists - {unique_id}")
                 ack_successful_entity("TELLER", {"unique_id": unique_id})
             else:
-                lookup = Teller(teller_number, branch_id, service_name)
+                lookup = Teller(teller_number, branch_id, service_name,branch_unique_id)
                 lookup.unique_id = unique_id
 
                 db.session.add(lookup)

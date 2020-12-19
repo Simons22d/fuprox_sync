@@ -183,10 +183,11 @@ class Teller(db.Model):
     is_synced = db.Column(db.Boolean, default=False)
     branch_unique_id = db.Column(db.ForeignKey("branch.unique_id"))
 
-    def __init__(self, number, branch, service):
+    def __init__(self, number, branch, service, branch_unique_id):
         self.number = number
         self.branch = branch
         self.service = service
+        self.branch_unique_id = branch_unique_id
 
 
 class TellerSchema(ma.Schema):

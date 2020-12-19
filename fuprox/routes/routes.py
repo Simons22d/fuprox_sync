@@ -1624,6 +1624,7 @@ def create_booking_online_(service_name, start, branch_id_, is_instant=False, us
     time.sleep(5)
     return final
 
+# requests.exceptions.ConnectionError: HTTPConnectionPool
 
 def make_booking(service_name, start="", branch_id=1, ticket=1, active=False, upcoming=False, serviced=False,
                  teller=000, kind="1", user=0000, instant=False, unique_id="", is_synced=""):
@@ -1835,14 +1836,24 @@ def disconnect():
 
 @sio.on('online_data_')
 def online_data(data):
-    log(data)
-    data = data["booking_data"]
-    requests.post(f"{link}/sycn/online/booking", json=data)
+    try:
+        data = data["booking_data"]
+        requests.post(f"{link}/sycn/online/booking", json=data)
+        time.sleep(1)
+    except requests.exceptions.ConnectionError:
+        # we are going to call script to restart this script
+        pass
+
 
 
 @sio.on('sync_service_')
 def sync_service_(data):
-    requests.post(f"{link}/sycn/offline/services", json=data)
+    try:
+        requests.post(f"{link}/sycn/offline/services", json=data)
+        time.sleep(1)
+    except requests.exceptions.ConnectionError:
+        # we are going to call script to restart this script
+        pass
 
 
 @sio.on("update_ticket_data")

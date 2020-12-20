@@ -1118,8 +1118,7 @@ def ahead_of_you():
     service_name = request.json["service_name"]
     branch_id = request.json["branch_id"]
     lookup = Booking.query.filter_by(service_name=service_name).filter_by(nxt=1001).filter_by(
-        branch_id=branch_id).filter_by(
-        serviced=False).all()
+        branch_id=branch_id).filter_by(serviced=False).all()
     data = len(bookings_schema.dump(lookup)) if len(bookings_schema.dump(lookup)) else 0
     return jsonify({"infront": data})
 
@@ -1142,6 +1141,8 @@ def sync_bookings():
     unique_id = request.json["unique_id"]
     is_synced = True if int(user) == 0 else False
     serviced = request.json['serviced']
+    forwarded = request.json["forwarded"]
+    unique_teller = request.json["unique_teller"]
 
     if not booking_exists_by_unique_id(unique_id):
         final = dict()
@@ -1150,7 +1151,8 @@ def sync_bookings():
             try:
                 log("Create Booking has Been hit")
                 final = create_booking_online_(service_name, start, branch_id, is_instant, user, kind=ticket,
-                                               key=key_, unique_id=unique_id, is_synced=is_synced, serviced=serviced)
+                                               key=key_, unique_id=unique_id, is_synced=is_synced, serviced=serviced,
+                                               forwarded=forwarded, unique_teller=forwarded)
             except ValueError as err:
                 log(err)
         except sqlalchemy.exc.IntegrityError:
@@ -1187,16 +1189,16 @@ def sync_services():
 def sycn_teller():
     service = request.json["service"]
     branch = request.json["branch"]
-    number = request.json["number"]
+    number_ = request.json["number"]
     unique_id = request.json["unique_id"]
     branch_unique_id = request.json["branch_unique_id"]
-    teller = dict()
+    teller_ = dict()
     try:
-        teller = add_teller(number, branch, service, unique_id,branch_unique_id)
+        teller_ = add_teller(number_, branch, service, unique_id, branch_unique_id)
     except sqlalchemy.exc.IntegrityError as e:
         print(e)
         print("Error! Teller could not be added Could not add the record.")
-    return teller
+    return teller_
 
 
 @app.route("/update/ticket", methods=["POST"])
@@ -1270,7 +1272,7 @@ def services_exist(services, branch_id):
     return True
 
 
-def add_teller(teller_number, branch_id, service_name, unique_id,branch_unique_id):
+def add_teller(teller_number, branch_id, service_name, unique_id, branch_unique_id):
     # here we are going to ad teller details
     # two words service name
     if not teller_exists_unique(unique_id):
@@ -1280,7 +1282,7 @@ def add_teller(teller_number, branch_id, service_name, unique_id,branch_unique_i
                 final = {"msg": "Teller number exists"}, 500
                 # log(f"teller exists - {unique_id}")
             else:
-                lookup = Teller(teller_number, branch_id, service_name,branch_unique_id)
+                lookup = Teller(teller_number, branch_id, service_name, branch_unique_id)
                 lookup.unique_id = unique_id
                 try:
                     db.session.add(lookup)
@@ -1301,7 +1303,7 @@ def add_teller(teller_number, branch_id, service_name, unique_id,branch_unique_i
                 log(f"teller exists - {unique_id}")
                 ack_successful_entity("TELLER", {"unique_id": unique_id})
             else:
-                lookup = Teller(teller_number, branch_id, service_name,branch_unique_id)
+                lookup = Teller(teller_number, branch_id, service_name, branch_unique_id)
                 lookup.unique_id = unique_id
 
                 db.session.add(lookup)
@@ -1574,7 +1576,7 @@ def update_branch_offline(key):
 
 
 def create_booking_online_(service_name, start, branch_id_, is_instant=False, user=0, kind=0, key="", unique_id="",
-                           is_synced="", serviced=False):
+                           is_synced="", serviced=False, forwarded=False, unique_teller=0):
     data_ = update_branch_offline(key)
     branch_id = data_["id"] if data_ else 1
     if branch_is_medical(branch_id):
@@ -1588,13 +1590,15 @@ def create_booking_online_(service_name, start, branch_id_, is_instant=False, us
                 next_ticket = int(last_ticket_number) + 1
                 log("before make booking call")
                 final = make_booking(name, start, branch_id, next_ticket, instant=False, user=user, kind=kind,
-                                     unique_id=unique_id, is_synced=is_synced, serviced=serviced)
+                                     unique_id=unique_id, is_synced=is_synced, serviced=serviced, forwarded=forwarded,
+                                     unique_teller=unique_teller)
             else:
                 # we are making the first booking for this category
                 # we are going to make this ticket  active
                 next_ticket = 1
                 final = make_booking(name, start, branch_id, next_ticket, active=False, instant=False, user=user,
-                                     kind=kind, unique_id=unique_id, is_synced=is_synced, serviced=serviced)
+                                     kind=kind, unique_id=unique_id, is_synced=is_synced, serviced=serviced,
+                                     forwarded=forwarded, unique_teller=unique_teller)
         else:
             raise ValueError("Service Does Not Exist. Please Add Service First.")
             final = True
@@ -1609,14 +1613,16 @@ def create_booking_online_(service_name, start, branch_id_, is_instant=False, us
                 next_ticket = int(last_ticket_number) + 1
                 log(f"before make booking call-> booking status {serviced}")
                 final = make_booking(name, start, branch_id, next_ticket, instant=is_instant, user=user, kind=kind,
-                                     unique_id=unique_id, is_synced=is_synced, serviced=serviced)
+                                     unique_id=unique_id, is_synced=is_synced, serviced=serviced, forwarded=forwarded,
+                                     unique_teller=unique_teller)
             else:
                 # we are making the first booking for this category
                 # we are going to make this ticket  active
                 next_ticket = 1
                 log(f"before make booking call-> booking status {serviced}")
                 final = make_booking(name, start, branch_id, next_ticket, active=False, instant=is_instant, user=user,
-                                     kind=kind, unique_id=unique_id, is_synced=is_synced, serviced=serviced)
+                                     kind=kind, unique_id=unique_id, is_synced=is_synced, serviced=serviced,
+                                     forwarded=forwarded, unique_teller=unique_teller)
         else:
             raise ValueError("Service Does Not Exist. Please Add Service First.")
             final = True
@@ -1629,19 +1635,24 @@ def create_booking_online_(service_name, start, branch_id_, is_instant=False, us
 # requests.exceptions.ConnectionError: HTTPConnectionPool
 
 def make_booking(service_name, start="", branch_id=1, ticket=1, active=False, upcoming=False, serviced=False,
-                 teller=000, kind="1", user=0000, instant=False, unique_id="", is_synced=""):
+                 teller=000, kind="1", user=0000, instant=False, unique_id="", is_synced="", forwarded=False,
+                 unique_teller=0):
     final = list()
     branch_data = branch_exist(branch_id)
     if branch_is_medical(branch_id):
         log("This is a medical branch")
         lookup = Booking(service_name, start, branch_id, ticket, active, upcoming, serviced, teller, kind, user, False,
-                         fowarded=False)
+                         forwarded)
         if unique_id:
             lookup.unique_id = unique_id
         if is_synced:
             lookup.is_synced = True
         if serviced:
             lookup.serviced = True
+        if forwarded:
+            lookup.forwarded = True
+        if unique_teller:
+            lookup.unique_teller = unique_teller
 
         db.session.add(lookup)
         db.session.commit()
@@ -1784,7 +1795,11 @@ def ahead_of_you_id(id):
             filter_by(branch_id=lookup_data["branch_id"]).filter_by(nxt=1001).filter_by(serviced=False). \
             filter(Booking.date_added > lookup_data["start"]).all()
         final_booking_data = bookings_schema.dump(booking_lookup_two)
-        final = {"msg": len(final_booking_data)}
+
+        # fowarded
+        forwarded = Booking.query.filter_by(branch_id=lookup.branch_id).filter(Booking.unique_teller.isnot(
+            0)).filter_by(forwarded=True).filter_by(service_name=lookup_data["service_name"]).all()
+        final = {"msg": len(final_booking_data) + len(forwarded)}
     else:
         final = {"msg": None}
 
@@ -1870,20 +1885,37 @@ def booking_is_serviced(unique_id):
     return book.serviced
 
 
+def booking_is_forwarded(unique_id):
+    book = Booking.query.filter_by(unique_id=unique_id).first()
+    return book.forwarded
+
+
 def update_booking_by_unique_id(bookings):
     for booking in bookings:
         unique_id = booking["unique_id"]
         status = booking["serviced"]
+        unique_teller = booking["unique_teller"]
+        forwarded = booking["forwarded"]
+
         booking = booking_exists_by_unique_id(unique_id)
         if booking:
             if bool(status):
                 if not booking_is_serviced(unique_id):
                     booking.serviced = True
                     db.session.commit()
+            if bool(forwarded):
+                if unique_teller:
+                    if booking_is_forwarded(unique_id):
+                        booking.forwarded = True
+                        booking.unique_teller = unique_teller
+                        db.session.commit()
         else:
             # request offline data for sync
             sio.emit("booking_update", unique_id)
     return dict()
+
+
+
 
 
 """
@@ -2062,6 +2094,12 @@ def flag_teller_as_synced(data):
 def add_teller_data(data):
     data = data["teller_data"]
     requests.post(f"{link}/sycn/offline/teller", json=data)
+
+
+# update_teller_data
+@sio.on("update_teller_data")
+def add_teller_data(data):
+    requests.post(f"{link}/sycn/online/booking", json=data)
 
 
 @sio.on("verify_key_data")

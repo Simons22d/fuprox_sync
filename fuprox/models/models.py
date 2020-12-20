@@ -53,7 +53,7 @@ class Booking(db.Model):
     forwarded = db.Column(db.Boolean, default=False)
     is_synced = db.Column(db.Boolean, default=False)
     unique_id = db.Column(db.String(255), default=ticket_unique, unique=True)
-    unique_teller = db.Column(db.String(255), default=000, unique=True)
+    unique_teller = db.Column(db.String(255), default=000)
 
     def __init__(self, service_name, start, branch_id, ticket, active, nxt, serviced, teller, kind, user, instant,
                  fowarded):
@@ -74,7 +74,9 @@ class Booking(db.Model):
 
 class BookingSchema(ma.Schema):
     class Meta:
-        fields = ("id", "service_name", "start", "branch_id", "ticket", "active", "nxt", "serviced", "teller", "kind", "user", "is_instant", "forwarded", "is_synced", "unique_id", "unique_teller")
+        fields = (
+            "id", "service_name", "start", "branch_id", "ticket", "active", "nxt", "serviced", "teller", "kind", "user",
+            "is_instant", "forwarded", "is_synced", "unique_id", "unique_teller")
 
 
 # user DB model
@@ -119,7 +121,6 @@ class CompanySchema(ma.Schema):
         fields = ("id", "name", "service", "is_synced")
 
 
-# creating a branch class
 class Branch(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(length=250), unique=True)
@@ -133,8 +134,9 @@ class Branch(db.Model):
     key_ = db.Column(db.Text)
     valid_till = db.Column(db.DateTime)
     is_synced = db.Column(db.Boolean, default=False)
+    unique_id = db.Column(db.String(255), nullable=False, unique=True)
 
-    def __init__(self, name, company, longitude, latitude, opens, closes, service, description, key_):
+    def __init__(self, name, company, longitude, latitude, opens, closes, service, description, key_, unique_id):
         self.name = name
         self.company = company
         self.longitude = longitude
@@ -144,6 +146,7 @@ class Branch(db.Model):
         self.service = service
         self.description = description
         self.key_ = key_
+        self.unique_id = unique_id
 
 
 # creating branch Schema
@@ -151,7 +154,7 @@ class BranchSchema(ma.Schema):
     class Meta:
         fields = (
             'id', 'name', 'company', 'address', 'longitude', 'latitude', 'opens', 'closes', 'service', 'description',
-            "key_", "valid_till", "is_synced")
+            "key_", "valid_till", "is_synced", "unique_id")
 
 
 class Help(db.Model):

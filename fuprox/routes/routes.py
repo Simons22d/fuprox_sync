@@ -1117,16 +1117,18 @@ def service_offered():
 def ahead_of_you():
     service_name = request.json["service_name"]
     branch_id = request.json["branch_id"]
-    lookup = Booking.query.filter_by(service_name=service_name).filter_by(nxt=1001).filter_by(
-        branch_id=branch_id).filter_by(serviced=False).all()
 
-    forwarded = Booking.query.filter_by(branch_id=lookup.branch_id).filter(Booking.unique_teller.isnot(
-        0)).filter_by(forwarded=True).filter_by(service_name=lookup.service_name).all()
+    branch = Branch.query.get(int(branch_id))
+
+    lookup = Booking.query.filter_by(service_name=service_name).filter_by(nxt=1001).filter_by(
+        branch_id=branch_id).filter_by(serviced=False).filter_by(forwarded=False).all()
+
+    forwarded = Booking.query.filter_by(branch_id=branch.id).filter_by(
+        forwarded=True).filter_by(service_name=service_name).filter_by(serviced=False).all()
 
     final = len(lookup) + len(forwarded)
 
-    data = final if final else 0
-    return jsonify({"infront": data})
+    return jsonify({"infront": final})
 
 
 @app.route("/ahead/of/you/id", methods=["POST"])
@@ -1152,10 +1154,8 @@ def sync_bookings():
 
     if not booking_exists_by_unique_id(unique_id):
         final = dict()
-        log("Booking Does Not exist.")
         try:
             try:
-                log("Create Booking has Been hit")
                 final = create_booking_online_(service_name, start, branch_id, is_instant, user, kind=ticket,
                                                key=key_, unique_id=unique_id, is_synced=is_synced, serviced=serviced,
                                                forwarded=forwarded, unique_teller=forwarded)
@@ -1264,6 +1264,7 @@ def init_sync():
 # functions >>>>>>>>>>>>>>>>>>>>>>>>
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+
 def get_online_by_key(key):
     lookup = Branch.query.filter_by(key_=key).first()
     lookup_data = branch_schema.dump(lookup)
@@ -1325,6 +1326,7 @@ def add_teller(teller_number, branch_id, service_name, unique_id, branch_unique_
         db.session.commit()
         final = dict()
     return final
+
 
 
 """
@@ -1804,7 +1806,13 @@ def ahead_of_you_id(id):
 
         # fowarded
         forwarded = Booking.query.filter_by(branch_id=lookup.branch_id).filter(Booking.unique_teller.isnot(
-            0)).filter_by(forwarded=True).filter_by(service_name=lookup_data["service_name"]).all()
+            0)).filter_by(forwarded=True).filter_by(service_name=lookup_data["service_name"]).filter_by(
+            serviced=False).all()
+
+        # forwarded = Booking.query.filter_by(branch_id=lookup.branch_id).filter(Booking.unique_teller.isnot(
+        #     0)).filter_by(forwarded=True).filter_by(service_name=lookup.service_name).filter_by(
+        #     serviced=False).all()
+
         final = {"msg": len(final_booking_data) + len(forwarded)}
     else:
         final = {"msg": None}
@@ -1881,8 +1889,6 @@ def sync_service_(data):
 
 @sio.on("update_ticket_data")
 def update_ticket_data(data):
-    log("updating ticket ...")
-    log(data)
     requests.post(f"{link}/update/ticket", json=data)
 
 
@@ -2105,6 +2111,7 @@ def add_teller_data(data):
 # update_teller_data
 @sio.on("update_teller_data")
 def add_teller_data(data):
+    log(data)
     requests.post(f"{link}/sycn/online/booking", json=data)
 
 

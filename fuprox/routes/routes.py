@@ -114,26 +114,6 @@ def loop_data_check_reset_tickets(data):
     return ticket_reset
 
 
-def save_code(user, code):
-    lookup = Recovery(user, code)
-    db.session.add(lookup)
-    db.session.commit()
-    return recovery_schema.dump(lookup)
-
-
-def random_four():
-    rand = random.getrandbits(30)
-    numbers = str(rand)
-    final = [numbers[i:i + 4] for i in range(0, len(numbers), 4)]
-    final = f"{final[0]}-{final[1]}"
-    return final
-
-
-def email_exists(email):
-    lookup = Customer.query.filter_by(email=email).first()
-    return user_schema.dump(lookup)
-
-
 def branch_get_single(branch_id):
     # make a database selection
     data = Branch.query.filter_by(id=branch_id).first()
@@ -988,7 +968,7 @@ def sync_offline_data(data):
 
             if parsed_data["bookings_verify"]:
                 update_booking_by_unique_id(parsed_data["bookings_verify"])
-
+            log("we are hit")
             # this key here  will trigger the data for a specific branch to be
             # fetched and pushed down to the backend module.
             data = sync_service(parsed_data["key"])

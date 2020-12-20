@@ -40,21 +40,20 @@ class Booking(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     service_name = db.Column(db.String(length=250), nullable=True)
     start = db.Column(db.String(length=200))
-    branch_id = db.Column(db.ForeignKey("branch.id"),nullable=False)
+    branch_id = db.Column(db.ForeignKey("branch.id"), nullable=False)
     ticket = db.Column(db.String(length=6), nullable=False)
     date_added = db.Column(db.DateTime, default=datetime.now, unique=True)
     active = db.Column(db.Boolean, default=False, nullable=False)
     nxt = db.Column(db.Integer, nullable=False, default=1001)
     serviced = db.Column(db.Boolean, nullable=False, default=False)
-    teller = db.Column(db.String(250), db.ForeignKey("teller.unique_id"),nullable=False)
+    teller = db.Column(db.String(250), db.ForeignKey("teller.unique_id"), nullable=False)
     kind = db.Column(db.Integer, nullable=False)
-    user = db.Column(db.Integer,default=0,nullable=False)
+    user = db.Column(db.Integer, default=0, nullable=False)
     is_instant = db.Column(db.Boolean, default=False)
     forwarded = db.Column(db.Boolean, default=False)
     is_synced = db.Column(db.Boolean, default=False)
     unique_id = db.Column(db.String(255), default=ticket_unique, unique=True)
     unique_teller = db.Column(db.String(255), default=000, unique=True)
-
 
     def __init__(self, service_name, start, branch_id, ticket, active, nxt, serviced, teller, kind, user, instant,
                  fowarded):
@@ -75,8 +74,7 @@ class Booking(db.Model):
 
 class BookingSchema(ma.Schema):
     class Meta:
-        fields = ("id", "service_name", "start", "branch_id", "ticket", "active", "nxt", "serviced", "teller", \
-                  "kind", "user", "is_instant", "forwarded", "is_synced", "unique_id","unique_teller")
+        fields = ("id", "service_name", "start", "branch_id", "ticket", "active", "nxt", "serviced", "teller", "kind", "user", "is_instant", "forwarded", "is_synced", "unique_id", "unique_teller")
 
 
 # user DB model

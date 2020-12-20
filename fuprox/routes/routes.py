@@ -1119,7 +1119,13 @@ def ahead_of_you():
     branch_id = request.json["branch_id"]
     lookup = Booking.query.filter_by(service_name=service_name).filter_by(nxt=1001).filter_by(
         branch_id=branch_id).filter_by(serviced=False).all()
-    data = len(bookings_schema.dump(lookup)) if len(bookings_schema.dump(lookup)) else 0
+
+    forwarded = Booking.query.filter_by(branch_id=lookup.branch_id).filter(Booking.unique_teller.isnot(
+        0)).filter_by(forwarded=True).filter_by(service_name=lookup.service_name).all()
+
+    final = len(lookup) + len(forwarded)
+
+    data = final if final else 0
     return jsonify({"infront": data})
 
 
@@ -1887,7 +1893,7 @@ def booking_is_serviced(unique_id):
 
 def booking_is_forwarded(unique_id):
     book = Booking.query.filter_by(unique_id=unique_id).first()
-    return book.forwarded
+    return book.forwarded and book.unique_teller
 
 
 def update_booking_by_unique_id(bookings):
@@ -1905,7 +1911,7 @@ def update_booking_by_unique_id(bookings):
                     db.session.commit()
             if bool(forwarded):
                 if unique_teller:
-                    if booking_is_forwarded(unique_id):
+                    if not booking_is_forwarded(unique_id):
                         booking.forwarded = True
                         booking.unique_teller = unique_teller
                         db.session.commit()

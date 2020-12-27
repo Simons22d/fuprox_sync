@@ -22,19 +22,17 @@ CORS(app)
 # adding JWT to the app
 jwt = JWTManager(app)
 
-# basedir  = os.path.abspath(os.path.dirname(__file__))
-app.config["SQLALCHEMY_DATABASE_URI"] = f"mysql+mysqlconnector://{db_user}:{db_pass}@localhost:3306/fuprox"
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
-    "max_overflow": 1024,
-    "pool_pre_ping": True,
-    "pool_recycle": 3600,
-    "pool_size": 1500
-}
-
+app.config['SQLALCHEMY_POOL_RECYCLE'] = 10
+app.config['SQLALCHEMY_NATIVE_UNICODE'] = 20
+app.config['SQLALCHEMY_MAX_OVERFLOW'] = 1000
+app.config['SQLALCHEMY_POOL_SIZE'] = 1000
 app.config["SQLALCHEMY_POOL_TIMEOUT"] = 5
 app.config['MAX_CONTENT_LENGTH'] = 2048 * 1024 * 1024
+
+# basedir  = os.path.abspath(os.path.dirname(__file__))
+app.config["SQLALCHEMY_DATABASE_URI"] = f"mysql+mysqlconnector://{db_user}:{db_pass}@localhost:3306/fuprox_online"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 
 # app bindings

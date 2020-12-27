@@ -931,14 +931,33 @@ def update_booking_by_unique_id(bookings):
                     booking.serviced = True
                     db.session.commit()
             if bool(forwarded):
-                if unique_teller:
-                    if not booking_is_forwarded(unique_id):
-                        booking.forwarded = True
-                        booking.unique_teller = unique_teller
-                        db.session.commit()
+                booking.forwarded = True
+                booking.unique_teller = unique_teller
+                db.session.commit()
         else:
             # request offline data for sync
             sio.emit("booking_update", unique_id)
+    return dict()
+
+
+def update_booking_by_unique_id_single(booking):
+    unique_id = booking["unique_id"]
+    status = booking["serviced"]
+    unique_teller = booking["unique_teller"]
+    forwarded = booking["forwarded"]
+    booking = booking_exists_by_unique_id(unique_id)
+    if booking:
+        if bool(status):
+            if not booking_is_serviced(unique_id):
+                booking.serviced = True
+                db.session.commit()
+        if bool(forwarded):
+            booking.forwarded = True
+            booking.unique_teller = unique_teller
+            db.session.commit()
+    else:
+        # request offline data for sync
+        sio.emit("booking_update", unique_id)
     return dict()
 
 
@@ -985,6 +1004,7 @@ def sync_offline_data(data):
 @sio.on("booking_resync_data")
 def booking_resync_data_(data):
     return requests.post(f"{link}/sycn/online/booking", json=data)
+    pass
 
 
 # ---------------------------------
@@ -1118,8 +1138,8 @@ def add_teller_data(data):
 # update_teller_data
 @sio.on("update_teller_data")
 def add_teller_data(data):
-    log(data)
-    requests.post(f"{link}/sycn/online/booking", json=data)
+    update_booking_by_unique_id_single(data)
+    # requests.post(f"{link}/sycn/online/booking", json=data)
 
 
 @sio.on("verify_key_data")

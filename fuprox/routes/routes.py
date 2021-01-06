@@ -1046,8 +1046,21 @@ def sync_offline_data(data):
             if parsed_data["tellers"]:
                 for teller_ in parsed_data["tellers"]:
                     log(teller_)
-                    teller_.update({"key_": parsed_data["key"]})
-                    requests.post(f"{link}/sycn/offline/teller", json=teller_)
+                    if not teller_exists_by_unique_id(teller_["unique_id"]):
+                        branch = Branch.query.filter_by(branch_unique_id=teller_["branch_unique_id"]).first()
+                        lookup = Teller(teller_["number"],branch.id,teller_["service"],teller_["branch_unique_id"])
+                        db.session.add(lookup)
+                        db.session.commit()
+                        ack_successful_entity("TELLER", teller_schema.dump(lookup))
+                        log(f"teller synced + {teller_schema.dump(lookup)}")
+
+                    # teller_.update({"key_": parsed_data["key"]})
+
+                    # check if teller exists
+                    # if teller exists emit a flag as synced
+                    # if does not exist
+                    # copy the teller
+                    # requests.post(f"{link}/sycn/offline/teller", json=teller_)
                     time.sleep(1)
 
             if parsed_data["bookings"]:
@@ -1071,6 +1084,10 @@ def sync_offline_data(data):
             final.append(key)
             if parsed_data["key"]:
                 sio.emit("all_sync_online", {"data": final})
+
+
+def teller_exists_by_unique_id(unique_id):
+    return Teller.query.filter_by(unique_id=unique_id).first()
 
 
 # booking_resync_data

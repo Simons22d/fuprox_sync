@@ -377,28 +377,32 @@ def booking_clean_all(branch_id):
     return bookings_schema.dump(booking)
 
 
-def test_all_sync(branch_id):
-    data_fowarded_count = booking_forwarded_count(branch_id)
-    data_serviced_count = booking_serviced_count(branch_id)
-    data_clean_count = booking_all_count(branch_id)
-    data_fowarded_data = booking_forwarded_all(branch_id)
-    data_serviced_data = booking_serviced_all(branch_id)
-    data_clean_data = booking_clean_all(branch_id)
-    return {
-        "forwarded": {
-            "count": data_fowarded_count,
-            "bookings": data_fowarded_data
-        },
-        "serviced": {
-            "count": data_serviced_count,
-            "bookings": data_serviced_data
-        },
-        "clean": {
-            "count": data_clean_count,
-            "bookings": data_clean_data
+def sync_2_online(key):
+    branch = Branch.query.filter_by(key_=key).first()
+    if branch:
+        branch_id = branch.id
+        data_fowarded_count = booking_forwarded_count(branch_id)
+        data_serviced_count = booking_serviced_count(branch_id)
+        data_clean_count = booking_all_count(branch_id)
+        data_fowarded_data = booking_forwarded_all(branch_id)
+        data_serviced_data = booking_serviced_all(branch_id)
+        data_clean_data = booking_clean_all(branch_id)
+        return {
+            "forwarded": {
+                "count": data_fowarded_count,
+                "bookings": data_fowarded_data
+            },
+            "serviced": {
+                "count": data_serviced_count,
+                "bookings": data_serviced_data
+            },
+            "clean": {
+                "count": data_clean_count,
+                "bookings": data_clean_data
+            }
         }
-    }
-
+    else:
+        Exception("Branch Does Not Exists.")
 
 """
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -1186,6 +1190,53 @@ def flag_teller_as_synced(data):
 # ---------------------------------
 # ------------END------------------
 # ---------------------------------
+
+@sio.on("sync_2_request_data")
+def sync_2_request_data(offline_data):
+    try:
+        online_data_sync_2 = sync_2_online(offline_data["key_"])
+        # compare forwarded
+        if online_data_sync_2["forwarded"]["count"] != offline_data["forwarded"]["count"]:
+            # make a sync
+            # copy this data online
+            bookings = online_data_sync_2["forwarded"]["bookings"]
+            for booking in bookings:
+                pass
+
+            # get online data offline
+            final = dict()
+            final.update({'bookings' : bookings })
+            final.update({"key_": offline_data["key_"]})
+            sio.emit("sync_2_response", final)
+
+        # compare serviced
+        if online_data_sync_2["serviced"]["count"] != offline_data["serviced"]["count"]:
+            # make a sync
+            bookings = online_data_sync_2["serviced"]["bookings"]
+            for booking in bookings:
+                pass
+
+            final = dict()
+            final.update({'bookings': bookings})
+            final.update({"key_": offline_data["key_"]})
+            sio.emit("sync_2_response", final)
+
+        # compare clean
+        if online_data_sync_2["clean"]["count"] != offline_data["clean"]["count"]:
+            # make a sync
+            bookings = online_data_sync_2["clean"]["bookings"]
+
+            for booking in bookings:
+                pass
+
+            final = dict()
+            final.update({'bookings': bookings})
+            final.update({"key_": offline_data["key_"]})
+            sio.emit("sync_2_response", final)
+
+    except Exception as e:
+        pass
+
 
 @sio.on("add_teller_data")
 def add_teller_data(data):

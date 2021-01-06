@@ -986,8 +986,6 @@ def update_booking_by_unique_id(bookings):
 
         booking = booking_exists_by_unique_id(unique_id)
         if booking:
-            log("booking Exists")
-
             if bool(status):
                 if not booking_is_serviced(unique_id):
                     booking.serviced = True
@@ -997,7 +995,6 @@ def update_booking_by_unique_id(bookings):
                 booking.unique_teller = unique_teller
                 db.session.commit()
         else:
-            log("booking Exists")
             # request offline data for sync
             sio.emit("booking_update", unique_id)
     return dict()
@@ -1036,20 +1033,27 @@ def sync_offline_data(data):
                 for service in parsed_data["services"]:
                     service.update({"key": parsed_data["key"]})
                     requests.post(f"{link}/sycn/offline/services", json=service)
+                    time.sleep(1)
 
             if parsed_data["tellers"]:
                 for teller_ in parsed_data["tellers"]:
+                    log(teller)
                     teller_.update({"key_": parsed_data["key"]})
                     requests.post(f"{link}/sycn/offline/teller", json=teller_)
+                    time.sleep(1)
+
 
             if parsed_data["bookings"]:
                 # deal with bookings
                 for booking in parsed_data["bookings"]:
                     booking.update({"key_": parsed_data["key"]})
                     requests.post(f"{link}/sycn/online/booking", json=booking)
+                    time.sleep(1)
+
 
             if parsed_data["bookings_verify"]:
                 update_booking_by_unique_id(parsed_data["bookings_verify"])
+
             log("we are hit")
             # this key here  will trigger the data for a specific branch to be
             # fetched and pushed down to the backend module.

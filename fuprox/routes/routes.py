@@ -1074,7 +1074,37 @@ def sync_offline_data(data):
                 # deal with bookings
                 for booking in parsed_data["bookings"]:
                     booking.update({"key_": parsed_data["key"]})
-                    requests.post(f"{link}/sycn/online/booking", json=booking)
+                    service_name = booking["service_name"]
+                    start = booking["start"]
+                    branch_id = booking["branch_id"]
+                    is_instant = booking["is_instant"]
+                    user = booking["user"]
+                    ticket = booking["ticket"]
+                    key_ = booking["key_"]
+                    unique_id = booking["unique_id"]
+                    is_synced = True if int(user) == 0 else False
+                    serviced = booking['serviced']
+                    forwarded = booking["forwarded"]
+                    unique_teller = booking["unique_teller"]
+
+                    if not booking_exists_by_unique_id(unique_id):
+                        final = dict()
+                        try:
+                            try:
+                                final = create_booking_online_(service_name, start, branch_id, is_instant, user,
+                                                               kind=ticket,
+                                                               key=key_, unique_id=unique_id, is_synced=is_synced,
+                                                               serviced=serviced,
+                                                               forwarded=forwarded, unique_teller=unique_teller)
+                            except ValueError as err:
+                                log(err)
+                        except sqlalchemy.exc.IntegrityError:
+                            log("Error! Could not create booking.")
+                    else:
+                        log("Booking Does exist.")
+                        final = {"msg": "booking exists"}
+                        ack_successful_entity("BOOKING", {"unique_id": unique_id})
+
                     time.sleep(1)
 
             if parsed_data["bookings_verify"]:

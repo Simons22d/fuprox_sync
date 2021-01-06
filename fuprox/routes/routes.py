@@ -1038,9 +1038,20 @@ def sync_offline_data(data):
         if parsed_data:
             if parsed_data["services"]:
                 # deal with services offered
-                for service in parsed_data["services"]:
-                    service.update({"key": parsed_data["key"]})
-                    requests.post(f"{link}/sycn/offline/services", json=service)
+                for service_ in parsed_data["services"]:
+                    service_.update({"key": parsed_data["key"]})
+                    name = service_["name"]
+                    teller = service_["teller"]
+                    code = service_["code"]
+                    icon_id = service_["icon"]
+                    key = service_["key"]
+                    unique_id = service_["unique_id"]
+                    try:
+                        key_data = get_online_by_key(key)
+                        if key_data:
+                            create_service(name, teller, key_data["id"], code, icon_id, unique_id)
+                    except sqlalchemy.exc.IntegrityError:
+                        print("Error! Could not create service.")
                     time.sleep(1)
 
             if parsed_data["tellers"]:
@@ -1057,14 +1068,6 @@ def sync_offline_data(data):
                             log(f"teller synced + {lookup.unique_id}")
                         except sqlalchemy.exc.IntegrityError:
                             log("teller exists")
-
-                    # teller_.update({"key_": parsed_data["key"]})
-
-                    # check if teller exists
-                    # if teller exists emit a flag as synced
-                    # if does not exist
-                    # copy the teller
-                    # requests.post(f"{link}/sycn/offline/teller", json=teller_)
                     time.sleep(1)
 
             if parsed_data["bookings"]:

@@ -1047,7 +1047,7 @@ def sync_offline_data(data):
                 for teller_ in parsed_data["tellers"]:
                     log(teller_)
                     if not teller_exists_by_unique_id(teller_["unique_id"]):
-                        branch = Branch.query.filter_by(branch_unique_id=teller_["branch_unique_id"]).first()
+                        branch = Branch.query.filter_by(unique_id=teller_["branch_unique_id"]).first()
                         lookup = Teller(teller_["number"],branch.id,teller_["service"],teller_["branch_unique_id"])
                         db.session.add(lookup)
                         db.session.commit()

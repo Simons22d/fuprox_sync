@@ -168,7 +168,7 @@ def sync_bookings():
             try:
                 final = create_booking_online_(service_name, start, branch_id, is_instant, user, kind=ticket,
                                                key=key_, unique_id=unique_id, is_synced=is_synced, serviced=serviced,
-                                               forwarded=forwarded, unique_teller=forwarded)
+                                               forwarded=forwarded, unique_teller=unique_teller)
             except ValueError as err:
                 log(err)
         except sqlalchemy.exc.IntegrityError:
@@ -599,7 +599,7 @@ def update_branch_offline(key):
 
 
 def create_booking_online_(service_name, start, branch_id_, is_instant=False, user=0, kind=0, key="", unique_id="",
-                           is_synced="", serviced=False, forwarded=False, unique_teller=0):
+                           is_synced=False, serviced=False, forwarded=False, unique_teller=0):
     data_ = update_branch_offline(key)
     branch_id = data_["id"] if data_ else 1
     if branch_is_medical(branch_id):
@@ -926,6 +926,8 @@ def update_booking_by_unique_id(bookings):
 
         booking = booking_exists_by_unique_id(unique_id)
         if booking:
+            log("booking Exists")
+
             if bool(status):
                 if not booking_is_serviced(unique_id):
                     booking.serviced = True
@@ -935,6 +937,7 @@ def update_booking_by_unique_id(bookings):
                 booking.unique_teller = unique_teller
                 db.session.commit()
         else:
+            log("booking Exists")
             # request offline data for sync
             sio.emit("booking_update", unique_id)
     return dict()
@@ -1004,7 +1007,6 @@ def sync_offline_data(data):
 @sio.on("booking_resync_data")
 def booking_resync_data_(data):
     return requests.post(f"{link}/sycn/online/booking", json=data)
-    pass
 
 
 # ---------------------------------

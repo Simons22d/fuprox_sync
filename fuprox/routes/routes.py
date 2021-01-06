@@ -217,6 +217,7 @@ def sycn_teller():
     teller_ = dict()
     try:
         teller_ = add_teller(number_, branch, service, unique_id, branch_unique_id)
+        log(teller_)
     except sqlalchemy.exc.IntegrityError as e:
         print(e)
         print("Error! Teller could not be added Could not add the record.")
@@ -299,24 +300,30 @@ def add_teller(teller_number, branch_id, service_name, unique_id, branch_unique_
     # here we are going to ad teller details
     # two words service name
     if not teller_exists_unique(unique_id):
+        log("teller does not exist")
         if len(service_name.split(",")) > 1:
             # get teller by unique
+            log("teller does not exist 111")
+
             if get_teller(unique_id):
                 final = {"msg": "Teller number exists"}, 500
-                # log(f"teller exists - {unique_id}")
+                log(f"teller exists - {unique_id}")
             else:
                 lookup = Teller(teller_number, branch_id, service_name, branch_unique_id)
                 lookup.unique_id = unique_id
+                log("teller does not exist 2222")
+
                 try:
                     db.session.add(lookup)
                     db.session.commit()
-                    print("added")
+                    log("added")
                     ack_successful_entity("TELLER", teller_schema.dump(lookup))
                     log(f"teller synced + {unique_id}")
                 except sqlalchemy.exc.IntegrityError:
                     ack_failed_entity("TELLER", {"unique_id": unique_id})
                     # log(f"teller exists - {unique_id}")
                     ack_successful_entity("TELLER", {"data": {"unique_id": unique_id}})
+                    log("Teller issue 3333")
 
                 final = teller_schema.dump(lookup)
         else:

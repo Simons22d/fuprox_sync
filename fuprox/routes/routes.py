@@ -404,6 +404,7 @@ def sync_2_online(key):
     else:
         Exception("Branch Does Not Exists.")
 
+
 """
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 :::::sync offline booking | service >> online data for offline updating:::
@@ -1037,11 +1038,10 @@ def sync_offline_data(data):
 
             if parsed_data["tellers"]:
                 for teller_ in parsed_data["tellers"]:
-                    log(teller)
+                    log(teller_)
                     teller_.update({"key_": parsed_data["key"]})
                     requests.post(f"{link}/sycn/offline/teller", json=teller_)
                     time.sleep(1)
-
 
             if parsed_data["bookings"]:
                 # deal with bookings
@@ -1049,7 +1049,6 @@ def sync_offline_data(data):
                     booking.update({"key_": parsed_data["key"]})
                     requests.post(f"{link}/sycn/online/booking", json=booking)
                     time.sleep(1)
-
 
             if parsed_data["bookings_verify"]:
                 update_booking_by_unique_id(parsed_data["bookings_verify"])
@@ -1209,7 +1208,7 @@ def sync_2_request_data(offline_data):
 
             # get online data offline
             final = dict()
-            final.update({'bookings' : bookings })
+            final.update({'bookings': bookings})
             final.update({"key_": offline_data["key_"]})
             sio.emit("sync_2_response", final)
 

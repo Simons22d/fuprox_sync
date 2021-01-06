@@ -1049,6 +1049,7 @@ def sync_offline_data(data):
                     if not teller_exists_by_unique_id(teller_["unique_id"]):
                         branch = Branch.query.filter_by(unique_id=teller_["branch_unique_id"]).first()
                         lookup = Teller(teller_["number"],branch.id,teller_["service"],teller_["branch_unique_id"])
+                        lookup.unique_id = teller["unique_id"]
                         db.session.add(lookup)
                         db.session.commit()
                         ack_successful_entity("TELLER", teller_schema.dump(lookup))

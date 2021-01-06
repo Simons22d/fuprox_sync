@@ -1037,6 +1037,8 @@ def sync_offline_data(data):
         parsed_data = dict(data)
         if parsed_data:
             if parsed_data["services"]:
+                log("------> SYNC SERVICES")
+
                 # deal with services offered
                 for service_ in parsed_data["services"]:
                     service_.update({"key": parsed_data["key"]})
@@ -1055,6 +1057,8 @@ def sync_offline_data(data):
                     time.sleep(1)
 
             if parsed_data["tellers"]:
+                log("------> SYNC TELLERS")
+
                 for teller_ in parsed_data["tellers"]:
                     log(teller_)
                     if not teller_exists_by_unique_id(teller_["unique_id"]):
@@ -1071,9 +1075,11 @@ def sync_offline_data(data):
                     time.sleep(1)
 
             if parsed_data["bookings"]:
+                log("------> SYNC BOOKINGS")
                 # deal with bookings
                 for booking in parsed_data["bookings"]:
                     booking.update({"key_": parsed_data["key"]})
+
                     service_name = booking["service_name"]
                     start = booking["start"]
                     branch_id = booking["branch_id"]

@@ -1050,10 +1050,13 @@ def sync_offline_data(data):
                         branch = Branch.query.filter_by(unique_id=teller_["branch_unique_id"]).first()
                         lookup = Teller(teller_["number"],branch.id,teller_["service"],teller_["branch_unique_id"])
                         lookup.unique_id = teller_["unique_id"]
-                        db.session.add(lookup)
-                        db.session.commit()
-                        ack_successful_entity("TELLER", teller_schema.dump(lookup))
-                        log(f"teller synced + {teller_schema.dump(lookup)}")
+                        try:
+                            db.session.add(lookup)
+                            db.session.commit()
+                            ack_successful_entity("TELLER", teller_schema.dump(lookup))
+                            log(f"teller synced + {lookup.unique_id}")
+                        except sqlalchemy.exc.IntegrityError:
+                            log("teller exists")
 
                     # teller_.update({"key_": parsed_data["key"]})
 

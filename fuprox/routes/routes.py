@@ -344,6 +344,62 @@ def add_teller(teller_number, branch_id, service_name, unique_id, branch_unique_
     return final
 
 
+# ---------===============NEW SYNC==============-----------
+
+
+def booking_forwarded_count(branch_id):
+    return len(booking_forwarded_all(branch_id))
+
+
+def booking_serviced_count(branch_id):
+    return len(booking_serviced_all(branch_id))
+
+
+def booking_all_count(branch_id):
+    return len(booking_clean_all(branch_id))
+
+
+def booking_forwarded_all(branch_id):
+    booking = Booking.query.filter_by(nxt=1001).filter_by(forwarded=True).filter_by(serviced=False).filter_by(
+        branch_id=branch_id).all()
+    return bookings_schema.dump(booking)
+
+
+def booking_serviced_all(branch_id):
+    booking = Booking.query.filter_by(nxt=1001).filter_by(forwarded=False).filter_by(serviced=True).filter_by(
+        branch_id=branch_id).all()
+    return bookings_schema.dump(booking)
+
+
+def booking_clean_all(branch_id):
+    booking = Booking.query.filter_by(nxt=1001).filter_by(forwarded=False).filter_by(serviced=False).filter_by(
+        branch_id=branch_id).all()
+    return bookings_schema.dump(booking)
+
+
+def test_all_sync(branch_id):
+    data_fowarded_count = booking_forwarded_count(branch_id)
+    data_serviced_count = booking_serviced_count(branch_id)
+    data_clean_count = booking_all_count(branch_id)
+    data_fowarded_data = booking_forwarded_all(branch_id)
+    data_serviced_data = booking_serviced_all(branch_id)
+    data_clean_data = booking_clean_all(branch_id)
+    return {
+        "forwarded": {
+            "count": data_fowarded_count,
+            "bookings": data_fowarded_data
+        },
+        "serviced": {
+            "count": data_serviced_count,
+            "bookings": data_serviced_data
+        },
+        "clean": {
+            "count": data_clean_count,
+            "bookings": data_clean_data
+        }
+    }
+
+
 """
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 :::::sync offline booking | service >> online data for offline updating:::

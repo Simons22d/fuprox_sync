@@ -987,6 +987,7 @@ def booking_is_forwarded(unique_id):
 
 def update_booking_by_unique_id(bookings):
     for booking in bookings:
+
         unique_id = booking["unique_id"]
         status = booking["serviced"]
         unique_teller = booking["unique_teller"]
@@ -998,13 +999,17 @@ def update_booking_by_unique_id(bookings):
                 if not booking_is_serviced(unique_id):
                     booking.serviced = True
                     db.session.commit()
+                    log(f"Flagging the booking {unique_id}")
             if bool(forwarded):
                 booking.forwarded = True
                 booking.unique_teller = unique_teller
                 db.session.commit()
+                log(f"Flagging the booking {unique_id}")
         else:
             # request offline data for sync
             sio.emit("booking_update", unique_id)
+        # setting a time sleep for transaction MINIMIZE ERRORS
+        time.sleep(1)
     return dict()
 
 

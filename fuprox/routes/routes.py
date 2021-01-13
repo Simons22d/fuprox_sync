@@ -443,6 +443,7 @@ def get_all_unsyced_bookings(branch_key):
     online = Booking.query.filter_by(nxt=1001).filter_by(active=False).filter_by(branch_id=branch["id"]).filter_by(
         serviced=False).filter_by(is_synced=False).all()
     online_bookings = bookings_schema.dump(online)
+    log(online)
     return online_bookings
 
 
@@ -986,8 +987,8 @@ def booking_is_forwarded(unique_id):
 
 
 def update_booking_by_unique_id(bookings):
-    for booking in bookings:
 
+    for booking in bookings:
         unique_id = booking["unique_id"]
         status = booking["serviced"]
         unique_teller = booking["unique_teller"]
@@ -1049,7 +1050,6 @@ def sync_offline_data(data):
         if parsed_data:
             if parsed_data["services"]:
                 log("------> SYNC SERVICES")
-
                 # deal with services offered
                 for service_ in parsed_data["services"]:
                     service_.update({"key": parsed_data["key"]})
@@ -1069,7 +1069,6 @@ def sync_offline_data(data):
 
             if parsed_data["tellers"]:
                 log("------> SYNC TELLERS")
-
                 for teller_ in parsed_data["tellers"]:
                     log(teller_)
                     if not teller_exists_by_unique_id(teller_["unique_id"]):
@@ -1121,15 +1120,16 @@ def sync_offline_data(data):
                         log("Booking Does exist.")
                         final = {"msg": "booking exists"}
                         ack_successful_entity("BOOKING", {"unique_id": unique_id})
-
                     time.sleep(1)
 
             if parsed_data["bookings_verify"]:
                 update_booking_by_unique_id(parsed_data["bookings_verify"])
 
             log("we are hit")
+
             # this key here  will trigger the data for a specific branch to be
             # fetched and pushed down to the backend module.
+
             data = sync_service(parsed_data["key"])
             final = list()
             key = parsed_data["key"]

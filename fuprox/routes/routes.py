@@ -508,6 +508,8 @@ def create_service(name, teller, branch_id, code, icon_id, unique_id=""):
                 service = ServiceOffered(name, branch_id, teller, code, int(icon_id))
                 service.unique_id = unique_id
                 service.is_synced = True
+                if not service.medical_active:
+                    service.medical_active = False
                 try:
                     db.session.add(service)
                     db.session.commit()

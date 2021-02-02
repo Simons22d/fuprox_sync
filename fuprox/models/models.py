@@ -20,6 +20,7 @@ class ServiceOffered(db.Model):
     icon = db.Column(db.String(length=20))
     is_synced = db.Column(db.Boolean, default=False)
     unique_id = db.Column(db.String(255), default=ticket_unique, unique=True)
+    medical_active = db.Column(db.Boolean, default=False)
 
     def __init__(self, name, branch_id, teller, code, icon):
         self.name = name

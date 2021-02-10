@@ -192,11 +192,12 @@ def sync_services():
     icon_id = request.json["icon"]
     key = request.json["key"]
     unique_id = request.json["unique_id"]
+    medical_active = request.json["medical_active"]
     service = dict()
     try:
         key_data = get_online_by_key(key)
         if key_data:
-            service = create_service(name, teller, key_data["id"], code, icon_id, unique_id)
+            service = create_service(name, teller, key_data["id"], code, icon_id, unique_id,medical_active)
         else:
             service = dict()
     except sqlalchemy.exc.IntegrityError:
@@ -491,7 +492,7 @@ def sycn_branch_data(key):
 
 
 # sycing off line services
-def create_service(name, teller, branch_id, code, icon_id, unique_id=""):
+def create_service(name, teller, branch_id, code, icon_id, unique_id="", medical_active=True):
     if branch_exist(branch_id):
         final = None
         if service_exists_by_unique_id(unique_id):
@@ -508,8 +509,7 @@ def create_service(name, teller, branch_id, code, icon_id, unique_id=""):
                 service = ServiceOffered(name, branch_id, teller, code, int(icon_id))
                 service.unique_id = unique_id
                 service.is_synced = True
-                if not service.medical_active:
-                    service.medical_active = False
+                service.medical_active = medical_active
                 try:
                     db.session.add(service)
                     db.session.commit()

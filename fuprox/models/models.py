@@ -33,7 +33,7 @@ class ServiceOffered(db.Model):
 
 class ServiceOfferedSchema(ma.Schema):
     class Meta:
-        fields = ("id", "branch_id", "name", "teller", "date_added", "code", "icon", "unique_id")
+        fields = ("id", "branch_id", "name", "teller", "date_added", "code", "icon", "unique_id","medical_active")
 
 
 # creating a booking ID

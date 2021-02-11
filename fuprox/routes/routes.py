@@ -197,7 +197,7 @@ def sync_services():
     try:
         key_data = get_online_by_key(key)
         if key_data:
-            service = create_service(name, teller, key_data["id"], code, icon_id, unique_id,medical_active)
+            service = create_service(name, teller, key_data["id"], code, icon_id, unique_id, medical_active)
         else:
             service = dict()
     except sqlalchemy.exc.IntegrityError:
@@ -284,9 +284,12 @@ def init_sync():
 
 
 def get_online_by_key(key):
-    lookup = Branch.query.filter_by(key_=key).first()
-    lookup_data = branch_schema.dump(lookup)
-    return lookup_data
+    try:
+        lookup = Branch.query.filter_by(key_=key).first()
+        lookup_data = branch_schema.dump(lookup)
+        return lookup_data
+    except sqlalchemy.exc.InvalidRequestError:
+        return dict()
 
 
 def services_exist(services, branch_id):
@@ -425,8 +428,11 @@ def teller_exists_unique(unique_id):
 
 
 def get_branch_by_key(key):
-    lookup = Branch.query.filter_by(key_=key).first()
-    return branch_schema.dump(lookup)
+    try:
+        lookup = Branch.query.filter_by(key_=key).first()
+        return branch_schema.dump(lookup)
+    except sqlalchemy.exc.InvalidRequestError:
+        log("integrity issue")
 
 
 # new sync implementation
@@ -989,7 +995,6 @@ def booking_is_forwarded(unique_id):
 
 
 def update_booking_by_unique_id(bookings):
-
     for booking in bookings:
         unique_id = booking["unique_id"]
         status = booking["serviced"]
@@ -1018,7 +1023,7 @@ def update_booking_by_unique_id(bookings):
 
 
 def booking_is_forwarded(unique_id):
-    lookup = Booking.query.filter_by(unique_id= unique_id).first()
+    lookup = Booking.query.filter_by(unique_id=unique_id).first()
     return lookup.forwarded
 
 
@@ -1050,24 +1055,59 @@ def sync_offline_data(data):
     if data:
         parsed_data = dict(data)
         if parsed_data:
-            if parsed_data["services"]:
-                log("------> SYNC SERVICES")
-                # deal with services offered
-                for service_ in parsed_data["services"]:
-                    service_.update({"key": parsed_data["key"]})
-                    name = service_["name"]
-                    teller = service_["teller"]
-                    code = service_["code"]
-                    icon_id = service_["icon"]
-                    key = service_["key"]
-                    unique_id = service_["unique_id"]
-                    try:
+            if parsed_data["services_count"]:
+                existing = len(ServiceOffered.query.all())
+                if not existing == parsed_data["services_count"]:
+                    for service_ in parsed_data["services"]:
+                        # log(service_)
+                        service_.update({"key": parsed_data["key"]})
+                        name = service_["name"]
+                        teller = service_["teller"]
+                        code = service_["code"]
+                        icon_id = service_["icon"]
+                        key = service_["key"]
+                        unique_id = service_["unique_id"]
+                        medical_active = service_["medical_active"]
                         key_data = get_online_by_key(key)
-                        if key_data:
-                            create_service(name, teller, key_data["id"], code, icon_id, unique_id)
-                    except sqlalchemy.exc.IntegrityError:
-                        print("Error! Could not create service.")
-                    time.sleep(1)
+                        try:
+                            if key_data:
+                                if not service_exists_unique(unique_id):
+                                    service = ServiceOffered(name, key_data['id'], teller, code, int(icon_id))
+                                    service.unique_id = unique_id
+                                    service.is_synced = True
+                                    service.medical_active = medical_active
+                                    db.session.add(service)
+                                    db.session.commit()
+                        #
+                        #         ack_successful_entity("SERVICE",unique_id)
+                        #         log(f"service synced + {unique_id}")
+                        except sqlalchemy.exc.IntegrityError:
+                            print("Error! Could not create service.")
+                        # time.sleep(1)
+
+            # if parsed_data["services"]:
+            #     log("------> SYNC SERVICES")
+            #     # deal with services offered
+            #     # getting the service count
+            #     # existsing
+            #
+            #
+            #     for service_ in parsed_data["services"]:
+            #         service_.update({"key": parsed_data["key"]})
+            #         name = service_["name"]
+            #         teller = service_["teller"]
+            #         code = service_["code"]
+            #         icon_id = service_["icon"]
+            #         key = service_["key"]
+            #         unique_id = service_["unique_id"]
+            #         medical_active = service_["medical_active"]
+            #         try:
+            #             key_data = get_online_by_key(key)
+            #             if key_data:
+            #                 create_service(name, teller, key_data["id"], code, icon_id, unique_id, medical_active)
+            #         except sqlalchemy.exc.IntegrityError:
+            #             print("Error! Could not create service.")
+            #         time.sleep(1)
 
             if parsed_data["tellers"]:
                 log("------> SYNC TELLERS")
@@ -1075,7 +1115,7 @@ def sync_offline_data(data):
                     log(teller_)
                     if not teller_exists_by_unique_id(teller_["unique_id"]):
                         branch = Branch.query.filter_by(unique_id=teller_["branch_unique_id"]).first()
-                        lookup = Teller(teller_["number"],branch.id,teller_["service"],teller_["branch_unique_id"])
+                        lookup = Teller(teller_["number"], branch.id, teller_["service"], teller_["branch_unique_id"])
                         lookup.unique_id = teller_["unique_id"]
                         try:
                             db.session.add(lookup)
@@ -1126,7 +1166,6 @@ def sync_offline_data(data):
 
             if parsed_data["bookings_verify"]:
                 update_booking_by_unique_id(parsed_data["bookings_verify"])
-
             log("we are hit")
 
             # this key here  will trigger the data for a specific branch to be
@@ -1143,7 +1182,10 @@ def sync_offline_data(data):
 
 
 def teller_exists_by_unique_id(unique_id):
-    return Teller.query.filter_by(unique_id=unique_id).first()
+    try:
+        return Teller.query.filter_by(unique_id=unique_id).first()
+    except sqlalchemy.exc.InvalidRequestError:
+        db.session.rollback()
 
 
 # booking_resync_data

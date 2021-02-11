@@ -1078,9 +1078,14 @@ def sync_offline_data(data):
                                     service.medical_active = medical_active
                                     db.session.add(service)
                                     db.session.commit()
-                        #
-                        #         ack_successful_entity("SERVICE",unique_id)
-                        #         log(f"service synced + {unique_id}")
+                                    ack_successful_entity("SERVICE",unique_id)
+                                    log(f"service synced + {unique_id}")
+
+                                if service_exists_unique(unique_id):
+                                    lookup = ServiceOffered.query.filter_by(unique_id = unique_id).first()
+                                    lookup.medical_active = medical_active
+                                    db.session.commit()
+
                         except sqlalchemy.exc.IntegrityError:
                             print("Error! Could not create service.")
                         # time.sleep(1)

@@ -1056,38 +1056,39 @@ def sync_offline_data(data):
         parsed_data = dict(data)
         if parsed_data:
             if parsed_data["services_count"]:
-                existing = len(ServiceOffered.query.all())
-                if not existing == parsed_data["services_count"]:
-                    for service_ in parsed_data["services"]:
-                        # log(service_)
-                        service_.update({"key": parsed_data["key"]})
-                        name = service_["name"]
-                        teller = service_["teller"]
-                        code = service_["code"]
-                        icon_id = service_["icon"]
-                        key = service_["key"]
-                        unique_id = service_["unique_id"]
-                        medical_active = service_["medical_active"]
-                        key_data = get_online_by_key(key)
-                        try:
-                            if key_data:
-                                if not service_exists_unique(unique_id):
-                                    service = ServiceOffered(name, key_data['id'], teller, code, int(icon_id))
-                                    service.unique_id = unique_id
-                                    service.is_synced = True
-                                    service.medical_active = medical_active
-                                    db.session.add(service)
-                                    db.session.commit()
-                                    ack_successful_entity("SERVICE",unique_id)
-                                    log(f"service synced + {unique_id}")
+                # existing = len(ServiceOffered.query.all())
+                # if not existing == parsed_data["services_count"]:
+                for service_ in parsed_data["services"]:
+                    # log(service_)
+                    service_.update({"key": parsed_data["key"]})
+                    name = service_["name"]
+                    teller = service_["teller"]
+                    code = service_["code"]
+                    icon_id = service_["icon"]
+                    key = service_["key"]
+                    unique_id = service_["unique_id"]
+                    medical_active = service_["medical_active"]
+                    key_data = get_online_by_key(key)
+                    try:
+                        if key_data:
+                            if not service_exists_unique(unique_id):
+                                service = ServiceOffered(name, key_data['id'], teller, code, int(icon_id))
+                                service.unique_id = unique_id
+                                service.is_synced = True
+                                service.medical_active = medical_active
+                                log(unique_id,medical_active)
+                                db.session.add(service)
+                                db.session.commit()
+                                ack_successful_entity("SERVICE",unique_id)
+                                log(f"service synced + {unique_id}")
 
-                                if service_exists_unique(unique_id):
-                                    lookup = ServiceOffered.query.filter_by(unique_id = unique_id).first()
-                                    lookup.medical_active = medical_active
-                                    db.session.commit()
+                            if service_exists_unique(unique_id):
+                                lookup = ServiceOffered.query.filter_by(unique_id = unique_id).first()
+                                lookup.medical_active = medical_active
+                                db.session.commit()
 
-                        except sqlalchemy.exc.IntegrityError:
-                            print("Error! Could not create service.")
+                    except sqlalchemy.exc.IntegrityError:
+                        print("Error! Could not create service.")
                         # time.sleep(1)
 
             # if parsed_data["services"]:

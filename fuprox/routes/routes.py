@@ -1076,7 +1076,7 @@ def sync_offline_data(data):
                                 service.unique_id = unique_id
                                 service.is_synced = True
                                 service.medical_active = medical_active
-                                log(unique_id,medical_active)
+                                log(f"{unique_id}->{medical_active}")
                                 db.session.add(service)
                                 db.session.commit()
                                 ack_successful_entity("SERVICE",unique_id)

@@ -793,11 +793,13 @@ def make_booking(service_name, start="", branch_id=1, ticket=1, active=False, up
 
 def ack_successful_entity(name, data):
     sio.emit("ack_successful_enitity", {"category": name, "data": data})
+    log(f"ack_successful_enitity - {data}")
     return data
 
 
 def ack_failed_entity(name, data):
     sio.emit("ack_failed_enitity", {"category": name, "data": data})
+    log(f"ack_failed_enitity - {name}")
     return data
 
 
@@ -968,15 +970,28 @@ def online_data(data):
         pass
 
 
-@sio.on('sync_service_')
-def sync_service_(data):
+@sio.on('sync_service_data')
+def sync_service_data(data):
+    name = request.json["name"]
+    teller = request.json["teller"]
+    branch_id = request.json["branch_id"]
+    code = request.json["code"]
+    icon_id = request.json["icon"]
+    key = request.json["key"]
+    unique_id = request.json["unique_id"]
+    medical_active = request.json["medical_active"]
+    service = dict()
     try:
-        requests.post(f"{link}/sycn/offline/services", json=data)
-        time.sleep(1)
-    except requests.exceptions.ConnectionError:
-        # we are going to call script to restart this script
-        # subprocess.run("systemctl")
-        pass
+        key_data = get_online_by_key(key)
+        if key_data:
+            service = create_service(name, teller, key_data["id"], code, icon_id, unique_id, medical_active)
+        else:
+            service = dict()
+    except sqlalchemy.exc.IntegrityError:
+        ack_failed_entity("SERVICE", {"unique_id": unique_id})
+        print("Error! Could not create service.")
+        # WE ARE GOING TO ACKNOLEDGE WE CANNOT CREATE THE SERVICE ITH UNIQUE KEY
+    return service_schema.jsonify(service)
 
 
 @sio.on("update_ticket_data")

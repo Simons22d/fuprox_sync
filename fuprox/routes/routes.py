@@ -972,14 +972,14 @@ def online_data(data):
 
 @sio.on('sync_service_data')
 def sync_service_data(data):
-    name = request.json["name"]
-    teller = request.json["teller"]
-    branch_id = request.json["branch_id"]
-    code = request.json["code"]
-    icon_id = request.json["icon"]
-    key = request.json["key"]
-    unique_id = request.json["unique_id"]
-    medical_active = request.json["medical_active"]
+    name = data["name"]
+    teller = data["teller"]
+    branch_id = data["branch_id"]
+    code = data["code"]
+    icon_id = data["icon"]
+    key = data["key"]
+    unique_id = data["unique_id"]
+    medical_active = data["medical_active"]
     service = dict()
     try:
         key_data = get_online_by_key(key)
@@ -1387,7 +1387,19 @@ def sync_2_request_data(offline_data):
 @sio.on("add_teller_data")
 def add_teller_data(data):
     data = data["teller_data"]
-    requests.post(f"{link}/sycn/offline/teller", json=data)
+    service = data["service"]
+    branch = data["branch"]
+    number_ = data["number"]
+    unique_id = data["unique_id"]
+    branch_unique_id = data["branch_unique_id"]
+    teller_ = dict()
+    try:
+        teller_ = add_teller(number_, branch, service, unique_id, branch_unique_id)
+        log(teller_)
+    except sqlalchemy.exc.IntegrityError as e:
+        print(e)
+        print("Error! Teller could not be added Could not add the record.")
+    return teller_
 
 
 # update_teller_data
